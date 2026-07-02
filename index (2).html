@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remanejamento</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23374151'/><path d='M6 11h14M17 7l4 4-4 4M10 21H6m0 0l4 4m-4-4l4-4' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+[data-theme="dark"]{--bg:#0c0f14;--bg2:#111520;--bg3:#161b27;--bg4:#1c2333;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f4ff;--text2:#8892a4;--text3:#545f72}
+[data-theme="light"]{--bg:#f4f5f7;--bg2:#ffffff;--bg3:#f0f2f5;--bg4:#e5e7eb;--border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);--text:#111111;--text2:#444444;--text3:#777777}
+:root{--accent:#374151;--accent-dim:#e5e7eb;--green:#16a34a;--green-dim:#dcfce7;--red:#dc2626;--red-dim:#fee2e2;--warn:#b45309;--warn-dim:#fef3c7;--orange:#ea580c;--orange-dim:#ffedd5;--radius:12px;--radius-sm:8px;--nav-w:220px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;bottom:0;width:var(--nav-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
+.nav-logo{padding:1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.nav-mark{width:32px;height:32px;background:var(--accent);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.nav-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.nav-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.nav-body{padding:.75rem;flex:1}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:4px 8px;margin-bottom:2px;display:block;margin-top:8px}
+.nav-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:background .15s,color .15s;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent)}
+.nav-item svg{flex-shrink:0}
+.nav-bottom{padding:.75rem;border-top:1px solid var(--border)}
+.theme-btn{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:var(--radius-sm);background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text2)}
+.tw{width:32px;height:17px;border-radius:9px;background:var(--bg4);border:1px solid var(--border2);position:relative;transition:background .2s;flex-shrink:0}
+.tw::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--text3);transition:transform .2s}
+[data-theme="light"] .tw{background:var(--accent)}[data-theme="light"] .tw::after{transform:translateX(15px);background:#fff}
+
+/* MAIN */
+.main{margin-left:var(--nav-w);min-height:100vh}
+.topbar{height:54px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.75rem;position:sticky;top:0;z-index:40}
+.topbar-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;color:var(--text)}
+.topbar-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.page{display:none;padding:1.75rem}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.card-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.card-icon{width:24px;height:24px;border-radius:var(--radius-sm);background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.card-body{padding:1.25rem}
+
+/* FORM */
+.fg{display:grid;gap:10px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+input,select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .15s}
+input::placeholder{color:var(--text3)}
+input:focus,select:focus{border-color:var(--accent)}
+select{cursor:pointer}
+select option{background:var(--bg2);color:var(--text)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{opacity:.88}
+.btn-ghost{background:var(--bg3);color:var(--text2);border-color:var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:var(--radius-sm);transition:color .12s,background .12s;display:inline-flex;align-items:center}
+.btn-del:hover{color:var(--red);background:var(--red-dim)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;min-width:500px}
+.tbl thead tr{background:var(--bg3)}
+.tbl th{padding:9px 14px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl th.r{text-align:right}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover{background:var(--bg3)}
+.tbl tbody tr.clickable{cursor:pointer}
+.cr{text-align:right;font-size:13px;color:var(--text2)}
+
+/* STATS */
+.stats{display:grid;gap:10px;margin-bottom:1.25rem}
+.s4{grid-template-columns:repeat(4,1fr)}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
+.stat-val{font-family:'Sora',sans-serif;font-size:24px;font-weight:700;color:var(--text)}
+.stat-val.red{color:var(--red)}.stat-val.green{color:var(--green)}.stat-val.orange{color:var(--orange)}
+.stat-lbl{font-size:12px;color:var(--text3);margin-top:3px}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill-ok{background:var(--green-dim);color:#166534;border:1px solid #bbf7d0}
+.pill-orange{background:var(--orange-dim);color:#9a3412;border:1px solid #fed7aa}
+.pill-danger{background:var(--red-dim);color:#991b1b;border:1px solid #fecaca}
+
+/* LIST */
+.li{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;transition:border-color .15s}
+.li:hover{border-color:var(--border2)}
+.li-info{flex:1;min-width:0}
+.li-name{font-size:13px;font-weight:500;color:var(--text)}
+.li-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.li-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* DASH ITEMS */
+.item-cards{display:flex;flex-direction:column;gap:10px}
+.item-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.item-card.vencido{border-color:#fecaca;background:rgba(220,38,38,.03)}
+.item-card.urgente{border-color:#fed7aa}
+.item-card.ok{border-color:#bbf7d0}
+[data-theme="dark"] .item-card.vencido{background:rgba(220,38,38,.07)}
+.ic-code{font-family:monospace;font-size:15px;font-weight:700;color:var(--text)}
+.ic-name{font-size:13px;color:var(--text2);margin-top:2px}
+.ic-meta{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.countdown{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;text-align:right;white-space:nowrap;line-height:1.2;letter-spacing:.03em}
+.countdown.green{color:var(--green)}.countdown.orange{color:var(--orange)}.countdown.red{color:var(--red)}
+
+/* FILTER */
+.filter-row{display:flex;gap:8px;align-items:center;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-row input,.filter-row select{max-width:220px}
+
+/* SPIN / EMPTY */
+.spin{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--text3);gap:10px;font-size:13px}
+.spinner{width:17px;height:17px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.25rem;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;padding:2px 6px;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--bg3)}
+.modal-body{padding:1.25rem}
+.modal-stat{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:10px}
+.modal-stat-lbl{font-size:12px;color:var(--text3)}
+.modal-stat-val{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:var(--green)}
+.analista-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.analista-row:last-child{border-bottom:none}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;animation:tin .22s ease;min-width:220px}
+.toast.ok{background:var(--accent);color:#fff}.toast.err{background:var(--red);color:#fff}
+@keyframes tin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-mark"><svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 7h12M13 4l3 3-3 3M7 13H3m0 0l3 3m-3-3l3-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div><div class="nav-title">Remane<span style="color:#6b7280">jar</span></div><div class="nav-sub">Controle de estoque</div></div>
+  </div>
+  <div class="nav-body">
+    <span class="nav-label">Menu</span>
+    <div class="nav-item active" id="ni-dash" onclick="goTo('dash')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><rect x="2" y="2" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="9" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="13" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" id="ni-cadastro" onclick="goTo('cadastro')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Cadastro
+    </div>
+    <div class="nav-item" id="ni-registrar" onclick="goTo('registrar')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 10h12M13 6l4 4-4 4M7 6L3 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Registrar
+    </div>
+    <div class="nav-item" id="ni-registros" onclick="goTo('registros')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 6h12M4 10h8M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Registros
+    </div>
+    <div class="nav-item" id="ni-pendencias" onclick="goTo('pendencias')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v5M10 13v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Pendências <span id="nc-pend" style="margin-left:auto;background:#fee2e2;border:1px solid #fecaca;border-radius:20px;padding:1px 8px;font-size:10px;color:#991b1b;font-weight:600;display:none">0</span>
+    </div>
+  </div>
+  <div class="nav-bottom">
+    <div class="theme-btn" onclick="toggleTheme()"><span id="theme-lbl">Fundo escuro</span><div class="tw"></div></div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div><div class="topbar-title" id="tp-title">Dashboard</div><div class="topbar-sub" id="tp-sub">Itens registrados para remanejamento</div></div>
+    <button class="btn btn-ghost" onclick="loadAll();showToast('Atualizado.','ok')" style="font-size:12px;padding:6px 12px">
+      <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M1 7A6 6 0 0013 7M13 3v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Atualizar
+    </button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dash">
+    <div class="stats s4">
+      <div class="stat"><div class="stat-val" id="d-total">0</div><div class="stat-lbl">Itens para remanejar</div></div>
+      <div class="stat"><div class="stat-val orange" id="d-vencendo">0</div><div class="stat-lbl">Vencendo em 2 dias</div></div>
+      <div class="stat"><div class="stat-val red" id="d-vencidos">0</div><div class="stat-lbl">Prazos vencidos</div></div>
+      <div class="stat"><div class="stat-val green" id="d-anotacoes">0</div><div class="stat-lbl">Total anotações</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Contagem regressiva</div>
+      </div>
+      <div class="card-body">
+        <div class="item-cards" id="dash-items"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CADASTRO -->
+  <div class="page" id="page-cadastro">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Adicionar produto</div>
+        <div style="display:flex;gap:8px">
+          <label class="btn btn-ghost" style="cursor:pointer;position:relative;font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v8M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Importar Excel
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="importarExcel(event)" style="position:absolute;opacity:0;width:1px;height:1px">
+          </label>
+          <button class="btn btn-ghost" onclick="exportarExcel()" style="font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 10V2M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Exportar Excel
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="fg fg4" style="margin-bottom:10px">
+          <div class="field"><label>Código</label><input type="text" id="c-code" placeholder="Ex: 25210" onkeydown="if(event.key==='Enter')addCadastro()"></div>
+          <div class="field" style="grid-column:span 2"><label>Nome do produto</label><input type="text" id="c-nome" placeholder="Descrição do produto" onkeydown="if(event.key==='Enter')addCadastro()"></div>
+          <div class="field" style="justify-content:flex-end"><label style="opacity:0">x</label>
+            <button class="btn btn-primary" onclick="addCadastro()" style="width:100%">
+              <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Adicionar
+            </button>
+          </div>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);border:1px solid var(--border)">
+          <strong style="color:var(--text2)">Importação via Excel:</strong> Colunas <code>Código</code> e <code>Produto</code>.
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Produtos cadastrados</div>
+        <span style="font-size:12px;color:var(--text3)" id="cad-count">0</span>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="cad-filter" placeholder="Buscar código ou nome..." oninput="renderCadastro()">
+      </div>
+      <div class="card-body" style="padding-top:.75rem">
+        <div id="cad-list"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div class="page" id="page-registrar">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M4 10h8M9 6l4 4-4 4M7 6L3 10l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>Registrar item para remanejamento</div></div>
+      <div class="card-body">
+        <div class="fg fg4" style="margin-bottom:14px">
+          <div class="field"><label>Código do produto</label><input type="text" id="r-code" placeholder="Ex: 25210" oninput="buscarCodigo(this.value,'r-nome','r-cad-id')"></div>
+          <div class="field" style="grid-column:span 2">
+            <label>Produto encontrado</label>
+            <input type="text" id="r-nome" placeholder="—" readonly style="cursor:default;color:var(--text2)">
+            <input type="hidden" id="r-cad-id">
+          </div>
+          <div class="field"><label>Prazo para remanejar</label><input type="datetime-local" id="r-prazo"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="addRegistro()">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Registrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTROS -->
+  <div class="page" id="page-registros">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Registros de remanejamento</div>
+        <span style="font-size:12px;color:var(--text3)" id="reg-count">0</span>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="reg-filter" placeholder="Buscar código ou produto..." oninput="renderRegistros()">
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th>Código</th><th>Produto</th><th>Data registro</th><th>Prazo</th><th class="r">Total remanejado</th><th class="r">Status prazo</th><th></th>
+          </tr></thead>
+          <tbody id="reg-tbody"><tr><td colspan="6"><div class="spin"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- PENDÊNCIAS -->
+  <div class="page" id="page-pendencias">
+    <div class="stats s4" id="pend-stats" style="margin-bottom:1.25rem">
+      <div class="stat"><div class="stat-val red" id="p-total">0</div><div class="stat-lbl">Pendências abertas</div></div>
+      <div class="stat"><div class="stat-val" id="p-top-nome" style="font-size:16px;margin-top:4px">—</div><div class="stat-lbl">Analista com mais pendências</div></div>
+      <div class="stat"><div class="stat-val" id="p-top-qtd">0</div><div class="stat-lbl">Pendências do líder</div></div>
+      <div class="stat"><div class="stat-val" id="p-itens">0</div><div class="stat-lbl">Itens com pendência</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5M8 10v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Analistas com pendência por item</div>
+        <span style="font-size:12px;color:var(--text3)" id="pend-count">0</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th>Código</th><th>Produto</th><th>Prazo</th><th>Analistas pendentes</th>
+          </tr></thead>
+          <tbody id="pend-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M1 14c0-2.761 2.239-4 5-4s5 1.239 5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Ranking de pendências por analista</div>
+      </div>
+      <div class="card-body" id="pend-ranking"></div>
+    </div>
+  </div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Detalhes</div>
+      <button class="modal-close" onclick="document.getElementById('modal').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="modal-reg-id">
+      <div class="modal-stat">
+        <span class="modal-stat-lbl">Total remanejado</span>
+        <span class="modal-stat-val" id="modal-total">0</span>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:14px">Por analista</div>
+      <div id="modal-analistas" style="background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:16px"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Nova anotação</div>
+      <div class="fg fg2" style="margin-bottom:10px">
+        <div class="field"><label>Analista</label>
+          <select id="modal-a-analista">
+            <option value="">Selecione o analista</option>
+            <option>Rodrigo Pereira</option>
+            <option>Suiane Lopes</option>
+            <option>Raquel França</option>
+            <option>Amanda Menezes</option>
+            <option>Felipe Santana</option>
+          </select>
+        </div>
+        <div class="field"><label>Quantidade remanejada</label><input type="number" id="modal-a-qtd" placeholder="0" min="0"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="marcarIndisponivel()" style="color:var(--red);border-color:var(--red);font-size:12px">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4 7h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Indisponível
+        </button>
+        <button class="btn btn-primary" onclick="addAnotacaoModal()">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Salvar anotação
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+const SUPA_URL='https://fevhyllvfhvzzfhwyjuk.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZldmh5bGx2Zmh2enpmaHd5anVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzEyMTcsImV4cCI6MjA5NDQ0NzIxN30.GJRgEKW1bVWX1957_bKCTO6aVmR_rXWRCmo9-ZJDPiE';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let cadastros=[],registros=[],anotacoes=[],indisponiveis=[];
+let cdInterval=null;
+
+const ANALISTAS=['Rodrigo Pereira','Suiane Lopes','Raquel França','Amanda Menezes','Felipe Santana'];
+
+const PAGES={
+  dash:       {title:'Dashboard',   sub:'Clique em um item para registrar o remanejamento'},
+  cadastro:   {title:'Cadastro',    sub:'Gerencie os produtos'},
+  registrar:  {title:'Registrar',   sub:'Defina o item e prazo para remanejar'},
+  registros:  {title:'Registros',   sub:'Histórico completo — clique em um item para ver detalhes'},
+  pendencias: {title:'Pendências',  sub:'Analistas que não registraram ação nos itens ativos'},
+};
+
+function goTo(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('ni-'+page).classList.add('active');
+  document.getElementById('tp-title').textContent=PAGES[page].title;
+  document.getElementById('tp-sub').textContent=PAGES[page].sub;
+  if(page==='registros')renderRegistros();
+  if(page==='dash')renderDash();
+  if(page==='pendencias')renderPendencias();
+}
+
+function toggleTheme(){
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('theme-lbl').textContent=dark?'Fundo escuro':'Fundo claro';
+}
+
+/* LOAD */
+async function loadAll(){
+  const [{data:c},{data:r},{data:a},{data:ind}]=await Promise.all([
+    sb.from('cadastro').select('*').order('nome').limit(10000),
+    sb.from('registros').select('*').order('created_at',{ascending:false}).limit(10000),
+    sb.from('anotacoes').select('*').order('created_at',{ascending:false}).limit(10000),
+    sb.from('indisponiveis').select('*').limit(10000),
+  ]);
+  cadastros=c||[];registros=r||[];anotacoes=a||[];indisponiveis=ind||[];
+  renderCadastro();renderDash();renderRegistros();renderPendencias();
+}
+
+/* CADASTRO */
+async function addCadastro(){
+  const code=document.getElementById('c-code').value.trim();
+  const nome=document.getElementById('c-nome').value.trim();
+  if(!code||!nome){showToast('Preencha código e nome.','err');return;}
+  const prazo=new Date(Date.now()+30*86400000).toISOString();
+  const {error}=await sb.from('cadastro').insert({codigo:code,nome,prazo});
+  if(error){showToast(error.code==='23505'?'Código já existe.':'Erro ao salvar.','err');return;}
+  document.getElementById('c-code').value='';
+  document.getElementById('c-nome').value='';
+  showToast('Produto cadastrado.','ok');loadAll();
+}
+
+async function deleteCadastro(id){
+  await sb.from('cadastro').delete().eq('id',id);
+  showToast('Produto removido.','ok');loadAll();
+}
+
+function renderCadastro(){
+  const txt=(document.getElementById('cad-filter')?.value||'').toLowerCase();
+  const list=cadastros.filter(c=>!txt||c.codigo.toLowerCase().includes(txt)||c.nome.toLowerCase().includes(txt));
+  document.getElementById('cad-count').textContent=cadastros.length+' produto'+(cadastros.length!==1?'s':'');
+  const el=document.getElementById('cad-list');
+  if(!list.length){el.innerHTML='<div class="empty">Nenhum produto cadastrado.</div>';return;}
+  el.innerHTML=list.map(c=>`<div class="li">
+    <div class="li-dot" style="background:var(--accent)"></div>
+    <div class="li-info">
+      <div class="li-name">${c.nome} <span style="font-family:monospace;font-size:11px;color:var(--text3);font-weight:400">${c.codigo}</span></div>
+    </div>
+    <button class="btn-del" onclick="deleteCadastro(${c.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>`).join('');
+}
+
+async function importarExcel(e){
+  const file=e.target.files[0];if(!file)return;
+  if(typeof XLSX==='undefined'){showToast('Biblioteca não carregou. Recarregue a página.','err');return;}
+  showToast('Lendo arquivo...','ok');
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      const data=new Uint8Array(ev.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){showToast('Planilha vazia.','err');return;}
+      const prazo=new Date(Date.now()+30*86400000).toISOString();
+      const itens=[];
+      for(const row of rows){
+        const code=String(row['Código']||row['Codigo']||row['código']||row['codigo']||row['code']||row['SKU']||'').trim();
+        const nome=String(row['Produto']||row['produto']||row['Nome']||row['nome']||row['Descrição']||row['name']||'').trim();
+        if(!code||!nome)continue;
+        itens.push({codigo:code,nome,prazo});
+      }
+      if(!itens.length){showToast('Nenhum item válido.','err');return;}
+      let ok=0;
+      for(let i=0;i<itens.length;i+=100){
+        const lote=itens.slice(i,i+100);
+        const {error}=await sb.from('cadastro').upsert(lote,{onConflict:'codigo'});
+        if(!error)ok+=lote.length;
+      }
+      e.target.value='';
+      showToast(`${ok} produto(s) importado(s).`,ok>0?'ok':'err');
+      loadAll();
+    }catch(err){console.error(err);showToast('Erro ao processar arquivo.','err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportarExcel(){
+  const ws=XLSX.utils.json_to_sheet(cadastros.map(c=>({Código:c.codigo,Nome:c.nome})));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Cadastro');
+  XLSX.writeFile(wb,'cadastro_remanejamento.xlsx');
+}
+
+/* BUSCA PRODUTO */
+let buscaT={};
+function buscarCodigo(val,nomeId,idId){
+  const key=nomeId;
+  clearTimeout(buscaT[key]);
+  const nomeEl=document.getElementById(nomeId),idEl=document.getElementById(idId);
+  if(!val.trim()){nomeEl.value='—';idEl.value='';nomeEl.style.color='var(--text2)';return;}
+  buscaT[key]=setTimeout(()=>{
+    const found=cadastros.find(c=>c.codigo.toLowerCase()===val.trim().toLowerCase());
+    if(found){nomeEl.value=found.nome;idEl.value=found.id;nomeEl.style.color='var(--text)';}
+    else{nomeEl.value='Produto não encontrado';idEl.value='';nomeEl.style.color='var(--red)';}
+  },400);
+}
+
+/* REGISTRAR */
+async function addRegistro(){
+  const cadId=parseInt(document.getElementById('r-cad-id').value);
+  const prazo=document.getElementById('r-prazo').value;
+  if(!cadId){showToast('Informe um código válido.','err');return;}
+  if(!prazo){showToast('Informe o prazo.','err');return;}
+  const prod=cadastros.find(c=>c.id===cadId);
+  // Verifica se já existe registro para este produto
+  const jaExiste=registros.find(r=>r.cadastro_id===cadId);
+  if(jaExiste){
+    // Atualiza o prazo
+    await sb.from('registros').update({prazo:new Date(prazo).toISOString()}).eq('id',jaExiste.id);
+    showToast('Prazo atualizado.','ok');
+  } else {
+    const {error}=await sb.from('registros').insert({
+      cadastro_id:cadId,codigo:prod.codigo,nome_produto:prod.nome,prazo:new Date(prazo).toISOString()
+    });
+    if(error){showToast('Erro ao registrar.','err');return;}
+    showToast('Item registrado para remanejamento.','ok');
+  }
+  document.getElementById('r-code').value='';
+  document.getElementById('r-nome').value='—';
+  document.getElementById('r-cad-id').value='';
+  document.getElementById('r-prazo').value='';
+  loadAll();
+}
+
+
+/* REGISTROS */
+function renderRegistros(){
+  const txt=(document.getElementById('reg-filter')?.value||'').toLowerCase();
+  const list=registros.filter(r=>!txt||r.codigo.toLowerCase().includes(txt)||r.nome_produto.toLowerCase().includes(txt));
+  document.getElementById('reg-count').textContent=list.length+' item'+(list.length!==1?'s':'');
+  const body=document.getElementById('reg-tbody');
+  if(!list.length){body.innerHTML=`<tr><td colspan="6"><div class="empty">Nenhum item registrado ainda.</div></td></tr>`;return;}
+  body.innerHTML=list.map(r=>{
+    const total=anotacoes.filter(a=>a.registro_id===r.id).reduce((s,a)=>s+a.quantidade,0);
+    const prazoDate=new Date(r.prazo);
+    const diff=prazoDate-Date.now();
+    const vencido=diff<0;
+    const urgente=!vencido&&diff<172800000;
+    const prazoStr=prazoDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+prazoDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const dtReg=new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const pillClass=vencido?'pill-danger':urgente?'pill-orange':'pill-ok';
+    const pillTxt=vencido?'Vencido':urgente?'Urgente':'No prazo';
+    return `<tr class="clickable" onclick="abrirModal(${r.id})">
+      <td style="font-family:monospace;font-size:13px;font-weight:700">${r.codigo}</td>
+      <td style="font-size:13px;font-weight:500">${r.nome_produto}</td>
+      <td style="font-size:12px;color:var(--text3)">${dtReg}</td>
+      <td style="font-size:12px;color:var(--text3)">${prazoStr}</td>
+      <td class="cr" style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${total}</td>
+      <td style="text-align:right"><span class="pill ${pillClass}">${pillTxt}</span></td>
+      <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deleteRegistro(${r.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteRegistro(id){
+  await sb.from('anotacoes').delete().eq('registro_id',id);
+  await sb.from('registros').delete().eq('id',id);
+  showToast('Registro removido.','ok');loadAll();
+}
+
+/* MODAL */
+
+/* DASHBOARD */
+function renderDash(){
+  if(cdInterval)clearInterval(cdInterval);
+  const now=Date.now();
+  const vencidos=registros.filter(r=>new Date(r.prazo)<now).length;
+  const vencendo=registros.filter(r=>{const d=new Date(r.prazo)-now;return d>0&&d<172800000;}).length;
+  document.getElementById('d-total').textContent=registros.length;
+  document.getElementById('d-vencendo').textContent=vencendo;
+  document.getElementById('d-vencidos').textContent=vencidos;
+  document.getElementById('d-anotacoes').textContent=anotacoes.length;
+
+  const el=document.getElementById('dash-items');
+  // Só mostra itens com prazo futuro
+  const ativos=registros.filter(r=>new Date(r.prazo)>now);
+  const sorted=[...ativos].sort((a,b)=>new Date(a.prazo)-new Date(b.prazo));
+  if(!sorted.length){el.innerHTML='<div class="empty">Nenhum item ativo para remanejar.<br><span style="font-size:12px">Itens vencidos são removidos automaticamente.</span></div>';return;}
+
+  el.innerHTML=sorted.map(r=>{
+    const prazoDate=new Date(r.prazo);
+    const diff=prazoDate-now;
+    const vencido=diff<0;
+    const urgente=!vencido&&diff<172800000;
+    const total=anotacoes.filter(a=>a.registro_id===r.id).reduce((s,a)=>s+a.quantidade,0);
+    const cardClass=vencido?'vencido':urgente?'urgente':'ok';
+    const prazoStr=prazoDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+prazoDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const countEl=vencido
+      ?`<div style="color:var(--red);font-size:13px;font-weight:700;text-align:right">Vencido</div>`
+      :`<div class="countdown ${urgente?'orange':'green'}" id="cd-${r.id}">--</div>`;
+    return `<div class="item-card ${cardClass}" onclick="abrirModalAnotar(${r.id})" style="cursor:pointer" title="Clique para anotar remanejamento">
+      <div>
+        <div class="ic-code">${r.codigo}</div>
+        <div class="ic-name">${r.nome_produto}</div>
+        <div class="ic-meta">
+          <span class="pill ${urgente?'pill-orange':'pill-ok'}">${urgente?'Urgente':'No prazo'}</span>
+          <span style="font-size:11px;color:var(--text3)">Prazo: ${prazoStr}</span>
+          ${total>0?`<span style="font-size:12px;color:var(--green);font-weight:600">${total} un anotadas</span>`:'<span style="font-size:11px;color:var(--text3)">Sem anotações</span>'}
+        </div>
+      </div>
+      <div>${countEl}</div>
+    </div>`;
+  }).join('');
+
+  function tick(){
+    registros.forEach(r=>{
+      const el2=document.getElementById('cd-'+r.id);
+      if(!el2)return;
+      const diff2=new Date(r.prazo)-Date.now();
+      if(diff2<=0){loadAll();return;}
+      const dd=Math.floor(diff2/86400000);
+      const hh=Math.floor((diff2%86400000)/3600000);
+      const mm=Math.floor((diff2%3600000)/60000);
+      const ss=Math.floor((diff2%60000)/1000);
+      el2.textContent=`${String(dd).padStart(2,'0')}d ${String(hh).padStart(2,'0')}h ${String(mm).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`;
+    });
+  }
+  tick();
+  cdInterval=setInterval(tick,1000);
+}
+
+/* MODAL ANOTAR (dash) */
+function abrirModalAnotar(regId){
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg)return;
+  if(new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido. Registre nova solicitação.','err');return;}
+  const ants=anotacoes.filter(a=>a.registro_id===regId);
+  const total=ants.reduce((s,a)=>s+a.quantidade,0);
+  const porAnalista={};
+  ants.forEach(a=>{if(!porAnalista[a.analista])porAnalista[a.analista]=0;porAnalista[a.analista]+=a.quantidade;});
+  document.getElementById('modal-title').textContent=`${reg.codigo} — ${reg.nome_produto}`;
+  document.getElementById('modal-total').textContent=total+' un';
+  document.getElementById('modal-reg-id').value=regId;
+  const el=document.getElementById('modal-analistas');
+  el.innerHTML=!Object.keys(porAnalista).length
+    ?'<div class="empty" style="padding:1rem;font-size:12px">Nenhuma anotação ainda.</div>'
+    :Object.entries(porAnalista).sort((a,b)=>b[1]-a[1]).map(([nome,qtd])=>`
+      <div class="analista-row">
+        <div style="font-size:13px;font-weight:500">${nome}</div>
+        <div style="font-family:\'Sora\',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${qtd} un</div>
+      </div>`).join('');
+  document.getElementById('modal-a-analista').value='';
+  document.getElementById('modal-a-qtd').value='';
+  document.getElementById('modal').style.display='flex';
+}
+
+/* MODAL REGISTROS (detalhes) */
+function abrirModal(regId){
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg)return;
+  const ants=anotacoes.filter(a=>a.registro_id===regId);
+  const total=ants.reduce((s,a)=>s+a.quantidade,0);
+  const porAnalista={};
+  ants.forEach(a=>{if(!porAnalista[a.analista])porAnalista[a.analista]=0;porAnalista[a.analista]+=a.quantidade;});
+  document.getElementById('modal-title').textContent=`${reg.codigo} — ${reg.nome_produto}`;
+  document.getElementById('modal-total').textContent=total+' un';
+  document.getElementById('modal-reg-id').value=regId;
+  const el=document.getElementById('modal-analistas');
+  el.innerHTML=!Object.keys(porAnalista).length
+    ?'<div class="empty" style="padding:1rem;font-size:12px">Nenhuma anotação ainda.</div>'
+    :Object.entries(porAnalista).sort((a,b)=>b[1]-a[1]).map(([nome,qtd])=>`
+      <div class="analista-row">
+        <div style="font-size:13px;font-weight:500">${nome}</div>
+        <div style="font-family:\'Sora\',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${qtd} un</div>
+      </div>`).join('');
+  // Se vencido, esconde form de anotação
+  const vencido=new Date(reg.prazo)<=Date.now();
+  document.getElementById('modal-a-analista').closest('.fg').style.display=vencido?'none':'grid';
+  document.getElementById('modal').querySelector('.btn-primary').style.display=vencido?'none':'inline-flex';
+  document.getElementById('modal').style.display='flex';
+}
+
+async function addAnotacaoModal(){
+  const regId=parseInt(document.getElementById('modal-reg-id').value);
+  const analista=document.getElementById('modal-a-analista').value;
+  const qtd=parseInt(document.getElementById('modal-a-qtd').value)||0;
+  if(!analista){showToast('Selecione o analista.','err');return;}
+  if(!qtd){showToast('Informe a quantidade.','err');return;}
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg||new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido.','err');return;}
+  const {error}=await sb.from('anotacoes').insert({
+    registro_id:regId,codigo:reg.codigo,nome_produto:reg.nome_produto,analista,quantidade:qtd
+  });
+  if(error){showToast('Erro ao salvar.','err');return;}
+  showToast('Anotação salva.','ok');
+  document.getElementById('modal').style.display='none';
+  loadAll();
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('modal'))
+    document.getElementById('modal').style.display='none';
+}
+
+async function marcarIndisponivel(){
+  const regId=parseInt(document.getElementById('modal-reg-id').value);
+  const analista=document.getElementById('modal-a-analista').value;
+  if(!analista){showToast('Selecione o analista primeiro.','err');return;}
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg||new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido.','err');return;}
+  // Verifica se já marcou
+  const jaMarcou=indisponiveis.find(i=>i.registro_id===regId&&i.analista===analista);
+  if(jaMarcou){showToast('Analista já marcou indisponível neste item.','err');return;}
+  const {error}=await sb.from('indisponiveis').insert({registro_id:regId,analista});
+  if(error){showToast('Erro ao salvar.','err');return;}
+  showToast('Marcado como indisponível.','ok');
+  document.getElementById('modal').style.display='none';
+  loadAll();
+}
+
+function renderPendencias(){
+  // Itens ativos (prazo futuro)
+  const now=Date.now();
+  const ativos=registros.filter(r=>new Date(r.prazo)>now);
+
+  // Para cada item ativo, verifica quais analistas não têm anotação NEM indisponível
+  const pendMap={}; // registro_id -> [analistas pendentes]
+  const analistaPend={}; // analista -> count
+
+  ativos.forEach(r=>{
+    const comAcao=new Set([
+      ...anotacoes.filter(a=>a.registro_id===r.id).map(a=>a.analista),
+      ...indisponiveis.filter(i=>i.registro_id===r.id).map(i=>i.analista),
+    ]);
+    const pendentes=ANALISTAS.filter(a=>!comAcao.has(a));
+    if(pendentes.length){
+      pendMap[r.id]={reg:r,pendentes};
+      pendentes.forEach(a=>{analistaPend[a]=(analistaPend[a]||0)+1;});
+    }
+  });
+
+  const totalPend=Object.values(analistaPend).reduce((s,v)=>s+v,0);
+  const itensPend=Object.keys(pendMap).length;
+  document.getElementById('p-total').textContent=totalPend;
+  document.getElementById('p-itens').textContent=itensPend;
+
+  // Top analista
+  const topEntry=Object.entries(analistaPend).sort((a,b)=>b[1]-a[1])[0];
+  const ncEl=document.getElementById('nc-pend');
+  if(topEntry){
+    document.getElementById('p-top-nome').textContent=topEntry[0].split(' ')[0];
+    document.getElementById('p-top-qtd').textContent=topEntry[1];
+    ncEl.textContent=totalPend;ncEl.style.display='inline';
+  } else {
+    document.getElementById('p-top-nome').textContent='—';
+    document.getElementById('p-top-qtd').textContent='0';
+    ncEl.style.display='none';
+  }
+
+  // Tabela por item
+  const body=document.getElementById('pend-tbody');
+  document.getElementById('pend-count').textContent=itensPend+' item'+(itensPend!==1?'s':'');
+  if(!itensPend){
+    body.innerHTML=`<tr><td colspan="4"><div class="empty">Nenhuma pendência. Todos os analistas registraram suas ações.</div></td></tr>`;
+  } else {
+    body.innerHTML=Object.values(pendMap).map(({reg:r,pendentes})=>{
+      const prazoStr=new Date(r.prazo).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+new Date(r.prazo).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return `<tr>
+        <td style="font-family:monospace;font-size:13px;font-weight:700">${r.codigo}</td>
+        <td style="font-size:13px;font-weight:500">${r.nome_produto}</td>
+        <td style="font-size:12px;color:var(--text3)">${prazoStr}</td>
+        <td>${pendentes.map(a=>`<span class="pill pill-danger" style="margin-right:4px;margin-bottom:2px">${a.split(' ')[0]}</span>`).join('')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Ranking por analista
+  const rank=document.getElementById('pend-ranking');
+  if(!Object.keys(analistaPend).length){
+    rank.innerHTML='<div class="empty">Sem pendências.</div>';return;
+  }
+  rank.innerHTML=ANALISTAS.map(a=>{
+    const qt=analistaPend[a]||0;
+    const pct=Math.round((qt/Math.max(ativos.length,1))*100);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:500">${a}</span>
+        <span style="font-size:13px;font-weight:700;color:${qt>0?'var(--red)':'var(--green)'}">${qt} pendência${qt!==1?'s':''}</span>
+      </div>
+      <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${qt>0?'var(--red)':'var(--green)'};border-radius:3px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg,type){
+  const c=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  const ico=type==='ok'?'<svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M7 4v3.5M7 9.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  t.innerHTML=ico+' '+msg;c.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+
+loadAll();
+</script>
+</body>
+</html>
