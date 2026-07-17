@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remanejamento</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23374151'/><path d='M6 11h14M17 7l4 4-4 4M10 21H6m0 0l4 4m-4-4l4-4' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+[data-theme="dark"]{--bg:#0c0f14;--bg2:#111520;--bg3:#161b27;--bg4:#1c2333;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);--text:#f0f4ff;--text2:#8892a4;--text3:#545f72}
+[data-theme="light"]{--bg:#f4f5f7;--bg2:#ffffff;--bg3:#f0f2f5;--bg4:#e5e7eb;--border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);--text:#111111;--text2:#444444;--text3:#777777}
+:root{--accent:#374151;--accent-dim:#e5e7eb;--green:#16a34a;--green-dim:#dcfce7;--red:#dc2626;--red-dim:#fee2e2;--warn:#b45309;--warn-dim:#fef3c7;--orange:#ea580c;--orange-dim:#ffedd5;--radius:12px;--radius-sm:8px;--nav-w:220px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;bottom:0;width:var(--nav-w);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
+.nav-logo{padding:1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.nav-mark{width:32px;height:32px;background:var(--accent);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.nav-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.nav-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.nav-body{padding:.75rem;flex:1;overflow-y:auto}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:4px 8px;margin-bottom:2px;display:block;margin-top:8px}
+.nav-label:first-child{margin-top:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:background .15s,color .15s;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent)}
+.nav-item svg{flex-shrink:0}
+.nav-bottom{padding:.75rem;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.theme-btn{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:var(--radius-sm);background:var(--bg3);border:1px solid var(--border);cursor:pointer;font-size:12px;color:var(--text2)}
+.tw{width:32px;height:17px;border-radius:9px;background:var(--bg4);border:1px solid var(--border2);position:relative;transition:background .2s;flex-shrink:0}
+.tw::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--text3);transition:transform .2s}
+[data-theme="light"] .tw{background:var(--accent)}[data-theme="light"] .tw::after{transform:translateX(15px);background:#fff}
+
+/* MAIN */
+.main{margin-left:var(--nav-w);min-height:100vh}
+.topbar{height:54px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.75rem;position:sticky;top:0;z-index:40}
+.topbar-title{font-family:'Sora',sans-serif;font-size:15px;font-weight:600;color:var(--text)}
+.topbar-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.page{display:none;padding:1.75rem}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.card-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.card-icon{width:24px;height:24px;border-radius:var(--radius-sm);background:var(--accent-dim);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.card-body{padding:1.25rem}
+
+/* FORM */
+.fg{display:grid;gap:10px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+input,select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;outline:none;width:100%;transition:border-color .15s}
+input::placeholder{color:var(--text3)}
+input:focus,select:focus{border-color:var(--accent)}
+select{cursor:pointer}
+select option{background:var(--bg2);color:var(--text)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;border:1px solid transparent;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{opacity:.88}
+.btn-ghost{background:var(--bg3);color:var(--text2);border-color:var(--border)}.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:var(--radius-sm);transition:color .12s,background .12s;display:inline-flex;align-items:center}
+.btn-del:hover{color:var(--red);background:var(--red-dim)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;min-width:500px}
+.tbl thead tr{background:var(--bg3)}
+.tbl th{padding:9px 14px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbl th.r{text-align:right}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover{background:var(--bg3)}
+.tbl tbody tr.clickable{cursor:pointer}
+.cr{text-align:right;font-size:13px;color:var(--text2)}
+
+/* STATS */
+.stats{display:grid;gap:10px;margin-bottom:1.25rem}
+.s4{grid-template-columns:repeat(4,1fr)}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
+.stat-val{font-family:'Sora',sans-serif;font-size:24px;font-weight:700;color:var(--text)}
+.stat-val.red{color:var(--red)}.stat-val.green{color:var(--green)}.stat-val.orange{color:var(--orange)}
+.stat-lbl{font-size:12px;color:var(--text3);margin-top:3px}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pill-ok{background:var(--green-dim);color:#166534;border:1px solid #bbf7d0}
+.pill-orange{background:var(--orange-dim);color:#9a3412;border:1px solid #fed7aa}
+.pill-danger{background:var(--red-dim);color:#991b1b;border:1px solid #fecaca}
+
+/* LIST */
+.li{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px;transition:border-color .15s}
+.li:hover{border-color:var(--border2)}
+.li-info{flex:1;min-width:0}
+.li-name{font-size:13px;font-weight:500;color:var(--text)}
+.li-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.li-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* DASH ITEMS */
+.item-cards{display:flex;flex-direction:column;gap:10px}
+.item-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.item-card.vencido{border-color:#fecaca;background:rgba(220,38,38,.03)}
+.item-card.urgente{border-color:#fed7aa}
+.item-card.ok{border-color:#bbf7d0}
+[data-theme="dark"] .item-card.vencido{background:rgba(220,38,38,.07)}
+.ic-code{font-family:monospace;font-size:15px;font-weight:700;color:var(--text)}
+.ic-name{font-size:13px;color:var(--text2);margin-top:2px}
+.ic-meta{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.countdown{font-family:'Sora',sans-serif;font-size:16px;font-weight:600;text-align:right;white-space:nowrap;line-height:1.2;letter-spacing:.03em}
+.countdown.green{color:var(--green)}.countdown.orange{color:var(--orange)}.countdown.red{color:var(--red)}
+
+/* FILTER */
+.filter-row{display:flex;gap:8px;align-items:center;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-row input,.filter-row select{max-width:220px}
+
+/* SPIN / EMPTY */
+.spin{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--text3);gap:10px;font-size:13px}
+.spinner{width:17px;height:17px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.25rem;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;padding:2px 6px;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--bg3)}
+.modal-body{padding:1.25rem}
+.modal-stat{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);margin-bottom:10px}
+.modal-stat-lbl{font-size:12px;color:var(--text3)}
+.modal-stat-val{font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:var(--green)}
+.analista-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.analista-row:last-child{border-bottom:none}
+.usuario-block:last-child .analista-row{border-bottom:none}
+.usuario-detail{display:none;background:var(--bg2);border-bottom:1px solid var(--border)}
+.usuario-detail .analista-row{border-bottom:1px solid var(--border)}
+.usuario-detail .analista-row:last-child{border-bottom:none}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;animation:tin .22s ease;min-width:220px}
+.toast.ok{background:var(--accent);color:#fff}.toast.err{background:var(--red);color:#fff}
+@keyframes tin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+
+/* USER SELECT */
+.user-select-overlay{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:22px;padding:1.5rem}
+.user-card{cursor:pointer;justify-content:center;text-align:center}
+.user-card:hover{border-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="user-select-overlay" id="user-select-overlay">
+  <div style="text-align:center">
+    <div class="nav-mark" style="width:48px;height:48px;margin:0 auto 14px"><svg viewBox="0 0 20 20" fill="none" width="22" height="22"><path d="M4 7h12M13 4l3 3-3 3M7 13H3m0 0l3 3m-3-3l3-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div style="font-family:'Sora',sans-serif;font-size:18px;font-weight:700;color:var(--text)">Qual usuário deseja usar?</div>
+    <div style="font-size:12px;color:var(--text3);margin-top:4px">Selecione seu nome para continuar</div>
+  </div>
+  <div id="user-select-list" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px"></div>
+  <div style="display:flex;gap:8px;width:100%;max-width:320px">
+    <input type="text" id="user-new-nome" placeholder="Adicionar novo usuário..." onkeydown="if(event.key==='Enter')addUsuarioELogin()">
+    <button class="btn btn-primary" onclick="addUsuarioELogin()">Adicionar</button>
+  </div>
+  <div onclick="abrirPreOrder()" style="width:100%;max-width:320px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;cursor:pointer;display:flex;align-items:center;gap:14px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div style="width:38px;height:38px;background:var(--accent-dim);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><rect x="2" y="3" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+    <div>
+      <div style="font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--text)">Pré Order / Garantia</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">Registros de garantia e pré-pedidos</div>
+    </div>
+    <svg viewBox="0 0 16 16" fill="none" width="14" height="14" style="margin-left:auto;color:var(--text3)"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-mark"><svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 7h12M13 4l3 3-3 3M7 13H3m0 0l3 3m-3-3l3-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div><div class="nav-title">Remane<span style="color:#6b7280">jar</span></div><div class="nav-sub">Controle de estoque</div></div>
+  </div>
+  <div class="nav-body">
+    <span class="nav-label">Menu</span>
+    <div class="nav-item active" id="ni-dash" onclick="goTo('dash')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><rect x="2" y="2" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="9" width="7" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="13" width="7" height="5" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" id="ni-cadastro" onclick="goTo('cadastro')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Cadastro
+    </div>
+    <div class="nav-item" id="ni-destinos" onclick="goTo('destinos')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M10 18s6-5.5 6-10a6 6 0 00-12 0c0 4.5 6 10 6 10z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="10" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+      Destinos
+    </div>
+    <div class="nav-item" id="ni-registrar" onclick="goTo('registrar')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 10h12M13 6l4 4-4 4M7 6L3 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Registrar
+    </div>
+    <div class="nav-item" id="ni-registros" onclick="goTo('registros')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><path d="M4 6h12M4 10h8M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Registros
+    </div>
+    <div class="nav-item" id="ni-pendencias" onclick="goTo('pendencias')">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v5M10 13v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Pendências <span id="nc-pend" style="margin-left:auto;background:#fee2e2;border:1px solid #fecaca;border-radius:20px;padding:1px 8px;font-size:10px;color:#991b1b;font-weight:600;display:none">0</span>
+    </div>
+    <div class="nav-item" id="ni-prazos" onclick="goTo('prazos')" style="display:none">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Prazos
+    </div>
+  </div>
+  <div class="nav-bottom">
+    <div class="theme-btn" onclick="trocarUsuario()" title="Trocar usuário">
+      <span>Usuário: <strong id="current-user-lbl" style="color:var(--text)">—</strong></span>
+      <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M1 7A6 6 0 0013 7M13 3v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="theme-btn" onclick="toggleTheme()"><span id="theme-lbl">Fundo escuro</span><div class="tw"></div></div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div><div class="topbar-title" id="tp-title">Dashboard</div><div class="topbar-sub" id="tp-sub">Itens registrados para remanejamento</div></div>
+    <button class="btn btn-ghost" onclick="loadAll();showToast('Atualizado.','ok')" style="font-size:12px;padding:6px 12px">
+      <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M1 7A6 6 0 0013 7M13 3v4h-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Atualizar
+    </button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dash">
+    <div class="stats s4">
+      <div class="stat"><div class="stat-val" id="d-total">0</div><div class="stat-lbl">Pendentes para você</div></div>
+      <div class="stat"><div class="stat-val orange" id="d-vencendo">0</div><div class="stat-lbl">Vencendo em 2 dias</div></div>
+      <div class="stat"><div class="stat-val red" id="d-vencidos">0</div><div class="stat-lbl">Prazos vencidos (geral)</div></div>
+      <div class="stat"><div class="stat-val green" id="d-anotacoes">0</div><div class="stat-lbl">Suas anotações</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Contagem regressiva</div>
+      </div>
+      <div class="card-body">
+        <div class="item-cards" id="dash-items"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CADASTRO -->
+  <div class="page" id="page-cadastro">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Adicionar produto</div>
+        <div style="display:flex;gap:8px">
+          <label class="btn btn-ghost" style="cursor:pointer;position:relative;font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v8M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Importar Excel
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="importarExcel(event)" style="position:absolute;opacity:0;width:1px;height:1px">
+          </label>
+          <button class="btn btn-ghost" onclick="exportarExcel()" style="font-size:12px;padding:6px 12px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 10V2M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Exportar Excel
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="fg fg4" style="margin-bottom:10px">
+          <div class="field"><label>Código</label><input type="text" id="c-code" placeholder="Ex: 25210" onkeydown="if(event.key==='Enter')addCadastro()"></div>
+          <div class="field" style="grid-column:span 2"><label>Nome do produto</label><input type="text" id="c-nome" placeholder="Descrição do produto" onkeydown="if(event.key==='Enter')addCadastro()"></div>
+          <div class="field" style="justify-content:flex-end"><label style="opacity:0">x</label>
+            <button class="btn btn-primary" onclick="addCadastro()" style="width:100%">
+              <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Adicionar
+            </button>
+          </div>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);border:1px solid var(--border)">
+          <strong style="color:var(--text2)">Importação via Excel:</strong> Colunas <code>Código</code> e <code>Produto</code>.
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Produtos cadastrados</div>
+        <span style="font-size:12px;color:var(--text3)" id="cad-count">0</span>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="cad-filter" placeholder="Buscar código ou nome..." oninput="renderCadastro()">
+      </div>
+      <div class="card-body" style="padding-top:.75rem">
+        <div id="cad-list"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTINOS -->
+  <div class="page" id="page-destinos">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Adicionar destino</div>
+      </div>
+      <div class="card-body">
+        <div class="fg fg3" style="margin-bottom:10px">
+          <div class="field"><label>Nome do destino</label><input type="text" id="dst-nome" placeholder="Ex: Loja Centro" onkeydown="if(event.key==='Enter')addDestino()"></div>
+          <div class="field"><label>Usuário responsável</label>
+            <select id="dst-usuario"><option value="">Selecione</option></select>
+          </div>
+          <div class="field" style="justify-content:flex-end"><label style="opacity:0">x</label>
+            <button class="btn btn-primary" onclick="addDestino()" style="width:100%">
+              <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Adicionar
+            </button>
+          </div>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--radius-sm);font-size:12px;color:var(--text3);border:1px solid var(--border)">
+          <strong style="color:var(--text2)">Dica:</strong> cada destino (ponto de venda) pertence a um usuário responsável. Se o nome não aparecer na lista, adicione o usuário na tela de seleção de usuário (botão "Trocar usuário").
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Destinos cadastrados</div>
+        <span style="font-size:12px;color:var(--text3)" id="dst-count">0</span>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="dst-filter" placeholder="Buscar destino ou usuário..." oninput="renderDestinos()">
+      </div>
+      <div class="card-body" style="padding-top:.75rem">
+        <div id="dst-list"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTRAR -->
+  <div class="page" id="page-registrar">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M4 10h8M9 6l4 4-4 4M7 6L3 10l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>Registrar item para remanejamento</div></div>
+      <div class="card-body">
+        <div class="fg fg4" style="margin-bottom:14px">
+          <div class="field"><label>Código do produto</label><input type="text" id="r-code" placeholder="Ex: 25210" oninput="buscarCodigo(this.value,'r-nome','r-cad-id')"></div>
+          <div class="field" style="grid-column:span 2">
+            <label>Produto encontrado</label>
+            <input type="text" id="r-nome" placeholder="—" readonly style="cursor:default;color:var(--text2)">
+            <input type="hidden" id="r-cad-id">
+          </div>
+          <div class="field"><label>Prazo para remanejar</label><input type="datetime-local" id="r-prazo"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="addRegistro()">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Registrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTROS -->
+  <div class="page" id="page-registros">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Registros de remanejamento</div>
+        <span style="font-size:12px;color:var(--text3)" id="reg-count">0</span>
+      </div>
+      <div class="filter-row">
+        <input type="text" id="reg-filter" placeholder="Buscar código ou produto..." oninput="renderRegistros()">
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th>Código</th><th>Produto</th><th>Data registro</th><th>Prazo</th><th class="r">Total remanejado</th><th class="r">Status prazo</th><th></th>
+          </tr></thead>
+          <tbody id="reg-tbody"><tr><td colspan="6"><div class="spin"><div class="spinner"></div>Carregando...</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PENDÊNCIAS -->
+  <div class="page" id="page-pendencias">
+    <div class="stats s4" id="pend-stats" style="margin-bottom:1.25rem">
+      <div class="stat"><div class="stat-val red" id="p-total">0</div><div class="stat-lbl">Pendências abertas</div></div>
+      <div class="stat"><div class="stat-val" id="p-top-nome" style="font-size:16px;margin-top:4px">—</div><div class="stat-lbl">Usuário com mais pendências</div></div>
+      <div class="stat"><div class="stat-val" id="p-top-qtd">0</div><div class="stat-lbl">Pendências do líder</div></div>
+      <div class="stat"><div class="stat-val" id="p-itens">0</div><div class="stat-lbl">Itens com pendência</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5M8 10v.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Destinos com pendência por item</div>
+        <span style="font-size:12px;color:var(--text3)" id="pend-count">0</span>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr>
+            <th>Código</th><th>Produto</th><th>Prazo</th><th>Destinos pendentes</th>
+          </tr></thead>
+          <tbody id="pend-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="6" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M1 14c0-2.761 2.239-4 5-4s5 1.239 5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Ranking de pendências por usuário</div>
+      </div>
+      <div class="card-body" id="pend-ranking"></div>
+    </div>
+  </div>
+
+  <!-- PRAZOS (só Amanda) -->
+  <div class="page" id="page-prazos">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Itens ativos — editar prazo</div>
+        <span style="font-size:12px;color:var(--text3)" id="prazos-count">0 itens</span>
+      </div>
+      <div class="card-body" id="prazos-list"><div class="spin"><div class="spinner"></div>Carregando...</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PRÉ ORDER / GARANTIA -->
+<div id="preorder-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:600;overflow-y:auto">
+  <div style="max-width:1400px;margin:0 auto;padding:1.5rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onclick="fecharPreOrder()" class="btn btn-ghost" style="padding:7px 12px;font-size:13px">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Voltar
+        </button>
+        <div>
+          <div style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;color:var(--text)">Pré Order / Garantia</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">Registros de garantia e pré-pedidos</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="exportarPreOrder()" style="font-size:12px;padding:7px 12px">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 10V2M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Exportar Excel
+        </button>
+        <button class="btn btn-primary" onclick="salvarLinhaPreOrder()" style="font-size:12px;padding:7px 14px">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Nova linha
+        </button>
+      </div>
+    </div>
+
+    <!-- FORMULÁRIO NOVA LINHA -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>Adicionar registro</div></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- Período -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Período e data</div>
+          <div style="display:grid;grid-template-columns:80px 120px 130px;gap:10px">
+            <div class="field"><label>Ano</label><input type="text" id="po-ano" readonly style="cursor:default;text-align:center;color:var(--text2)"></div>
+            <div class="field"><label>Mês</label><input type="text" id="po-mes" readonly style="cursor:default;text-align:center;color:var(--text2)"></div>
+            <div class="field"><label>Data</label><input type="date" id="po-data" oninput="preencherMesAno(this.value)" style="text-align:center"></div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- Origem e rastreio -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Origem e rastreio</div>
+          <div style="display:grid;grid-template-columns:1fr 160px;gap:10px">
+            <div class="field"><label>Origem (destino)</label><select id="po-origem" style="text-align:center"><option value="">Selecione...</option></select></div>
+            <div class="field"><label>Rastreio</label><input type="text" id="po-rastreio" placeholder="Código de rastreio" style="text-align:center"></div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- Classificação -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Classificação</div>
+          <div style="display:grid;grid-template-columns:130px 1fr 110px;gap:10px">
+            <div class="field"><label>Finalidade</label>
+              <select id="po-finalidade" style="text-align:center">
+                <option value="">Selecione...</option>
+                <option>BUG</option><option>QUOTES</option><option>GARANTIA</option><option>PRÉ ORDER</option>
+              </select>
+            </div>
+            <div class="field"><label>Solicitante</label><select id="po-solicitante" style="text-align:center"><option value="">Selecione...</option></select></div>
+            <div class="field"><label>Movimento</label><input type="text" id="po-movimento" placeholder="Ex: 10374892" style="text-align:center"></div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- Códigos múltiplos -->
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Códigos solicitados</div>
+          <div id="po-codigos-wrap" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button onclick="adicionarCampoCodigoPreOrder()" class="btn btn-ghost" style="margin-top:8px;font-size:12px;padding:6px 14px">
+            <svg viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Adicionar outro código
+          </button>
+          <div style="margin-top:8px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm);font-size:11px;color:var(--text3);border:1px solid var(--border)">
+            Cada código gera uma linha separada na tabela com os mesmos dados desta solicitação.
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- Recebimento -->
+        <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Recebimento — preencher quando o produto chegar</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="field"><label>Quem recebeu</label><select id="po-recebido" style="text-align:center"><option value="">Selecione...</option></select></div>
+            <div class="field"><label>Data recebimento</label><input type="date" id="po-data-rec" style="text-align:center"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="salvarLinhaPreOrder()" style="padding:10px 28px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Salvar registros
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><div class="card-icon"><svg viewBox="0 0 16 16" fill="none" width="12" height="12"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></div>Registros</div>
+        <span style="font-size:12px;color:var(--text3)" id="po-count">0 registros</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:1200px">
+          <thead>
+            <tr style="background:var(--bg3)">
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Ano</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Mês</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Data</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Origem</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Movimento</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Código</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);min-width:200px">Produto</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Finalidade</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Solicitante</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Rastreio</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Quem recebeu</th>
+              <th style="padding:9px 12px;font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);text-align:left;border-bottom:1px solid var(--border);white-space:nowrap">Data receb.</th>
+              <th style="padding:9px 12px;border-bottom:1px solid var(--border)"></th>
+            </tr>
+          </thead>
+          <tbody id="po-tbody"><tr><td colspan="13" style="padding:3rem;text-align:center;color:var(--text3);font-size:13px">Nenhum registro ainda.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<!-- MODAL EDITAR ANOTAÇÃO -->
+<div class="modal-overlay" id="modal-editar-anotacao" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <div class="modal-title">Editar anotação</div>
+      <button class="modal-close" onclick="document.getElementById('modal-editar-anotacao').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ea-id">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius-sm)" id="ea-destino"></div>
+      <div class="fg fg2" style="margin-bottom:16px">
+        <div class="field"><label>Quantidade</label><input type="number" id="ea-qtd" placeholder="0" min="0"></div>
+        <div class="field"><label>Nº do movimento</label><input type="text" id="ea-mov" placeholder="Ex: MOV-001"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="salvarEdicaoAnotacao()">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PRAZO -->
+<div class="modal-overlay" id="modal-editar-prazo" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title" id="ep-titulo">Editar prazo</div>
+      <button class="modal-close" onclick="document.getElementById('modal-editar-prazo').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ep-reg-id">
+      <div class="field" style="margin-bottom:16px"><label>Novo prazo</label><input type="datetime-local" id="ep-prazo"></div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn btn-primary" onclick="salvarNovoPrazo()">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Salvar novo prazo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Detalhes</div>
+      <button class="modal-close" onclick="document.getElementById('modal').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="modal-reg-id">
+      <div class="modal-stat">
+        <span class="modal-stat-lbl">Total remanejado</span>
+        <span class="modal-stat-val" id="modal-total">0</span>
+      </div>
+
+      <!-- Modo visualização (Registros): usuários clicáveis -> destinos -->
+      <div id="modal-view-usuarios" style="display:none;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:16px;overflow:hidden"></div>
+
+      <!-- Modo anotar (Dashboard): escolher destino -> quantidade -->
+      <div id="modal-form-anotar" style="display:none">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Seus destinos</div>
+        <div id="modal-pend-info" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+        <div class="fg" style="margin-bottom:10px">
+          <div class="field">
+            <label>Destino</label>
+            <select id="modal-a-destino" onchange="const show=this.value?'flex':'none';document.getElementById('modal-a-qtd-wrap').style.display=show;document.getElementById('modal-a-mov-wrap').style.display=show;">
+              <option value="">Selecione o destino</option>
+            </select>
+          </div>
+          <div class="field" id="modal-a-qtd-wrap" style="display:none">
+            <label>Quantidade remanejada</label><input type="number" id="modal-a-qtd" placeholder="0" min="0">
+          </div>
+          <div class="field" id="modal-a-mov-wrap" style="display:none">
+            <label>Nº do movimento</label><input type="text" id="modal-a-mov" placeholder="Ex: MOV-001">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="marcarDestinoIndisponivel()" style="color:var(--red);border-color:var(--red);font-size:12px">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M4 7h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            Indisponível
+          </button>
+          <button class="btn btn-primary" onclick="salvarQuantidadeDestino()">
+            <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Salvar quantidade
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+const SUPA_URL='https://fevhyllvfhvzzfhwyjuk.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZldmh5bGx2Zmh2enpmaHd5anVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzEyMTcsImV4cCI6MjA5NDQ0NzIxN30.GJRgEKW1bVWX1957_bKCTO6aVmR_rXWRCmo9-ZJDPiE';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let cadastros=[],registros=[],anotacoes=[],indisponiveis=[],usuarios=[],destinos=[];
+let cdInterval=null;
+let currentUsuario=localStorage.getItem('remanejar_usuario')||'';
+
+const PAGES={
+  dash:       {title:'Dashboard',   sub:'Clique em um item para escolher o destino e a quantidade'},
+  cadastro:   {title:'Cadastro',    sub:'Gerencie os produtos'},
+  destinos:   {title:'Destinos',    sub:'Pontos de venda e o usuário responsável por cada um'},
+  registrar:  {title:'Registrar',   sub:'Defina o item e prazo para remanejar'},
+  registros:  {title:'Registros',   sub:'Histórico completo — clique em um código para ver detalhes por usuário'},
+  pendencias: {title:'Pendências',  sub:'Destinos que não registraram ação nos itens vencidos'},
+  prazos:     {title:'Prazos',      sub:'Gerencie os prazos dos itens ativos'},
+};
+
+function goTo(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const ni=document.getElementById("ni-"+page);if(ni)ni.classList.add("active");
+  document.getElementById('tp-title').textContent=PAGES[page].title;
+  document.getElementById('tp-sub').textContent=PAGES[page].sub;
+  if(page==='registros')renderRegistros();
+  if(page==='dash')renderDash();
+  if(page==='destinos')renderDestinos();
+  if(page==='pendencias')renderPendencias();
+  if(page==='prazos'){
+    document.getElementById('prazos-list').innerHTML='<div class="spin"><div class="spinner"></div>Carregando...</div>';
+    loadAll().then(()=>renderPrazos());
+  }
+}
+
+function toggleTheme(){
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('theme-lbl').textContent=dark?'Fundo escuro':'Fundo claro';
+}
+
+/* LOAD */
+async function loadAll(){
+  const [rc,rr,ra,rind,ru,rd]=await Promise.all([
+    sb.from('cadastro').select('*').order('nome').limit(10000),
+    sb.from('registros').select('*').order('created_at',{ascending:false}).limit(10000),
+    sb.from('anotacoes').select('*').order('created_at',{ascending:false}).limit(10000),
+    sb.from('indisponiveis').select('*').limit(10000),
+    sb.from('usuarios').select('*').order('nome').limit(1000),
+    sb.from('destinos').select('*').order('nome').limit(10000),
+  ]);
+  [rc,rr,ra,rind,ru,rd].forEach(res=>{if(res.error)console.error('Erro ao carregar dados:',res.error);});
+  cadastros=rc.data||[];registros=rr.data||[];anotacoes=ra.data||[];indisponiveis=rind.data||[];usuarios=ru.data||[];destinos=rd.data||[];
+  fillUsuarioSelect();
+  renderCadastro();renderDestinos();renderDash();renderRegistros();renderPendencias();renderPrazos();
+  checkUsuario();
+}
+
+/* USUÁRIO (seleção inicial, sem login) */
+function checkUsuario(){
+  if(currentUsuario && usuarios.find(u=>u.nome===currentUsuario)){
+    document.getElementById('user-select-overlay').style.display='none';
+    document.getElementById('current-user-lbl').textContent=currentUsuario;
+    document.getElementById('ni-prazos').style.display=currentUsuario==='Amanda Menezes'?'flex':'none';
+  } else {
+    currentUsuario='';
+    document.getElementById('current-user-lbl').textContent='—';
+    document.getElementById('user-select-overlay').style.display='flex';
+    renderUserSelect();
+  }
+}
+
+function renderUserSelect(){
+  const el=document.getElementById('user-select-list');
+  if(!usuarios.length){el.innerHTML='<div class="empty">Nenhum usuário cadastrado ainda. Adicione um abaixo.</div>';return;}
+  el.innerHTML=usuarios.map(u=>`<div class="li user-card" onclick="selecionarUsuario('${u.nome.replace(/'/g,"\\'")}')">
+    <div class="li-name" style="width:100%">${u.nome}</div>
+  </div>`).join('');
+}
+
+function selecionarUsuario(nome){
+  currentUsuario=nome;
+  localStorage.setItem('remanejar_usuario',nome);
+  document.getElementById('user-select-overlay').style.display='none';
+  document.getElementById('current-user-lbl').textContent=nome;
+  document.getElementById('ni-prazos').style.display=nome==='Amanda Menezes'?'flex':'none';
+  renderDash();
+}
+
+async function addUsuarioELogin(){
+  const nome=document.getElementById('user-new-nome').value.trim();
+  if(!nome){showToast('Informe um nome.','err');return;}
+  const {error}=await sb.from('usuarios').insert({nome});
+  if(error){showToast(error.code==='23505'?'Usuário já existe.':'Erro ao salvar usuário.','err');return;}
+  document.getElementById('user-new-nome').value='';
+  const {data:u}=await sb.from('usuarios').select('*').order('nome').limit(1000);
+  usuarios=u||[];
+  fillUsuarioSelect();
+  selecionarUsuario(nome);
+}
+
+function trocarUsuario(){
+  document.getElementById('user-select-overlay').style.display='flex';
+  renderUserSelect();
+}
+
+function fillUsuarioSelect(){
+  const sel=document.getElementById('dst-usuario');
+  if(sel)sel.innerHTML='<option value="">Selecione</option>'+usuarios.map(u=>`<option>${u.nome}</option>`).join('');
+}
+
+/* CADASTRO */
+async function addCadastro(){
+  const code=document.getElementById('c-code').value.trim();
+  const nome=document.getElementById('c-nome').value.trim();
+  if(!code||!nome){showToast('Preencha código e nome.','err');return;}
+  const prazo=new Date(Date.now()+30*86400000).toISOString();
+  const {error}=await sb.from('cadastro').insert({codigo:code,nome,prazo});
+  if(error){showToast(error.code==='23505'?'Código já existe.':'Erro ao salvar.','err');return;}
+  document.getElementById('c-code').value='';
+  document.getElementById('c-nome').value='';
+  showToast('Produto cadastrado.','ok');loadAll();
+}
+
+async function deleteCadastro(id){
+  await sb.from('cadastro').delete().eq('id',id);
+  showToast('Produto removido.','ok');loadAll();
+}
+
+function renderCadastro(){
+  const txt=(document.getElementById('cad-filter')?.value||'').toLowerCase();
+  const list=cadastros.filter(c=>!txt||c.codigo.toLowerCase().includes(txt)||c.nome.toLowerCase().includes(txt));
+  document.getElementById('cad-count').textContent=cadastros.length+' produto'+(cadastros.length!==1?'s':'');
+  const el=document.getElementById('cad-list');
+  if(!list.length){el.innerHTML='<div class="empty">Nenhum produto cadastrado.</div>';return;}
+  el.innerHTML=list.map(c=>`<div class="li">
+    <div class="li-dot" style="background:var(--accent)"></div>
+    <div class="li-info">
+      <div class="li-name">${c.nome} <span style="font-family:monospace;font-size:11px;color:var(--text3);font-weight:400">${c.codigo}</span></div>
+    </div>
+    <button class="btn-del" onclick="deleteCadastro(${c.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>`).join('');
+}
+
+async function importarExcel(e){
+  const file=e.target.files[0];if(!file)return;
+  if(typeof XLSX==='undefined'){showToast('Biblioteca não carregou. Recarregue a página.','err');return;}
+  showToast('Lendo arquivo...','ok');
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      const data=new Uint8Array(ev.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){showToast('Planilha vazia.','err');return;}
+      const prazo=new Date(Date.now()+30*86400000).toISOString();
+      const itens=[];
+      for(const row of rows){
+        const code=String(row['Código']||row['Codigo']||row['código']||row['codigo']||row['code']||row['SKU']||'').trim();
+        const nome=String(row['Produto']||row['produto']||row['Nome']||row['nome']||row['Descrição']||row['name']||'').trim();
+        if(!code||!nome)continue;
+        itens.push({codigo:code,nome,prazo});
+      }
+      if(!itens.length){showToast('Nenhum item válido.','err');return;}
+      let ok=0;
+      for(let i=0;i<itens.length;i+=100){
+        const lote=itens.slice(i,i+100);
+        const {error}=await sb.from('cadastro').upsert(lote,{onConflict:'codigo'});
+        if(!error)ok+=lote.length;
+      }
+      e.target.value='';
+      showToast(`${ok} produto(s) importado(s).`,ok>0?'ok':'err');
+      loadAll();
+    }catch(err){console.error(err);showToast('Erro ao processar arquivo.','err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportarExcel(){
+  const ws=XLSX.utils.json_to_sheet(cadastros.map(c=>({Código:c.codigo,Nome:c.nome})));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Cadastro');
+  XLSX.writeFile(wb,'cadastro_remanejamento.xlsx');
+}
+
+/* DESTINOS */
+async function addDestino(){
+  const nome=document.getElementById('dst-nome').value.trim();
+  const usuario=document.getElementById('dst-usuario').value;
+  if(!nome||!usuario){showToast('Preencha nome do destino e usuário responsável.','err');return;}
+  const {error}=await sb.from('destinos').insert({nome,usuario});
+  if(error){showToast('Erro ao salvar destino.','err');return;}
+  document.getElementById('dst-nome').value='';
+  document.getElementById('dst-usuario').value='';
+  showToast('Destino cadastrado.','ok');loadAll();
+}
+
+async function deleteDestino(id){
+  await sb.from('destinos').delete().eq('id',id);
+  showToast('Destino removido.','ok');loadAll();
+}
+
+function renderDestinos(){
+  const txt=(document.getElementById('dst-filter')?.value||'').toLowerCase();
+  const list=destinos.filter(d=>!txt||d.nome.toLowerCase().includes(txt)||(d.usuario||'').toLowerCase().includes(txt));
+  document.getElementById('dst-count').textContent=destinos.length+' destino'+(destinos.length!==1?'s':'');
+  const el=document.getElementById('dst-list');
+  if(!list.length){el.innerHTML='<div class="empty">Nenhum destino cadastrado.</div>';return;}
+  el.innerHTML=list.map(d=>`<div class="li">
+    <div class="li-dot" style="background:var(--accent)"></div>
+    <div class="li-info">
+      <div class="li-name">${d.nome}</div>
+      <div class="li-sub">Responsável: ${d.usuario}</div>
+    </div>
+    <button class="btn-del" onclick="deleteDestino(${d.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>`).join('');
+}
+
+/* BUSCA PRODUTO */
+let buscaT={};
+function buscarCodigo(val,nomeId,idId){
+  const key=nomeId;
+  clearTimeout(buscaT[key]);
+  const nomeEl=document.getElementById(nomeId),idEl=document.getElementById(idId);
+  if(!val.trim()){nomeEl.value='—';idEl.value='';nomeEl.style.color='var(--text2)';return;}
+  buscaT[key]=setTimeout(()=>{
+    const found=cadastros.find(c=>c.codigo.toLowerCase()===val.trim().toLowerCase());
+    if(found){nomeEl.value=found.nome;idEl.value=found.id;nomeEl.style.color='var(--text)';}
+    else{nomeEl.value='Produto não encontrado';idEl.value='';nomeEl.style.color='var(--red)';}
+  },400);
+}
+
+/* REGISTRAR */
+async function addRegistro(){
+  const cadId=parseInt(document.getElementById('r-cad-id').value);
+  const prazo=document.getElementById('r-prazo').value;
+  if(!cadId){showToast('Informe um código válido.','err');return;}
+  if(!prazo){showToast('Informe o prazo.','err');return;}
+  const prod=cadastros.find(c=>c.id===cadId);
+  // Verifica se já existe registro para este produto
+  const jaExiste=registros.find(r=>r.cadastro_id===cadId);
+  if(jaExiste){
+    // Atualiza o prazo
+    await sb.from('registros').update({prazo:new Date(prazo).toISOString()}).eq('id',jaExiste.id);
+    showToast('Prazo atualizado.','ok');
+  } else {
+    const {error}=await sb.from('registros').insert({
+      cadastro_id:cadId,codigo:prod.codigo,nome_produto:prod.nome,prazo:new Date(prazo).toISOString()
+    });
+    if(error){showToast('Erro ao registrar.','err');return;}
+    showToast('Item registrado para remanejamento.','ok');
+  }
+  document.getElementById('r-code').value='';
+  document.getElementById('r-nome').value='—';
+  document.getElementById('r-cad-id').value='';
+  document.getElementById('r-prazo').value='';
+  loadAll();
+}
+
+
+/* REGISTROS */
+function renderRegistros(){
+  const txt=(document.getElementById('reg-filter')?.value||'').toLowerCase();
+  const list=registros.filter(r=>!txt||r.codigo.toLowerCase().includes(txt)||r.nome_produto.toLowerCase().includes(txt));
+  document.getElementById('reg-count').textContent=list.length+' item'+(list.length!==1?'s':'');
+  const body=document.getElementById('reg-tbody');
+  if(!list.length){body.innerHTML=`<tr><td colspan="6"><div class="empty">Nenhum item registrado ainda.</div></td></tr>`;return;}
+  body.innerHTML=list.map(r=>{
+    const total=anotacoes.filter(a=>a.registro_id===r.id).reduce((s,a)=>s+a.quantidade,0);
+    const prazoDate=new Date(r.prazo);
+    const diff=prazoDate-Date.now();
+    const vencido=diff<0;
+    const urgente=!vencido&&diff<172800000;
+    const prazoStr=prazoDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+prazoDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const dtReg=new Date(r.created_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const pillClass=vencido?'pill-danger':urgente?'pill-orange':'pill-ok';
+    const pillTxt=vencido?'Vencido':urgente?'Urgente':'No prazo';
+    return `<tr class="clickable" onclick="abrirModal(${r.id})">
+      <td style="font-family:monospace;font-size:13px;font-weight:700">${r.codigo}</td>
+      <td style="font-size:13px;font-weight:500">${r.nome_produto}</td>
+      <td style="font-size:12px;color:var(--text3)">${dtReg}</td>
+      <td style="font-size:12px;color:var(--text3)">${prazoStr}</td>
+      <td class="cr" style="font-family:'Sora',sans-serif;font-size:16px;font-weight:700;color:var(--green)">${total}</td>
+      <td style="text-align:right"><span class="pill ${pillClass}">${pillTxt}</span></td>
+      <td onclick="event.stopPropagation()"><button class="btn-del" onclick="deleteRegistro(${r.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function deleteRegistro(id){
+  await sb.from('anotacoes').delete().eq('registro_id',id);
+  await sb.from('indisponiveis').delete().eq('registro_id',id);
+  await sb.from('registros').delete().eq('id',id);
+  showToast('Registro removido.','ok');loadAll();
+}
+
+/* DASHBOARD */
+function pendentesParaUsuario(reg,usuarioNome){
+  const meusDestinos=destinos.filter(d=>d.usuario===usuarioNome);
+  if(!meusDestinos.length)return [];
+  // Só conta ações DO PRÓPRIO usuário
+  const feitos=new Set([
+    ...anotacoes.filter(a=>a.registro_id===reg.id&&a.usuario===usuarioNome).map(a=>a.destino),
+    ...indisponiveis.filter(i=>i.registro_id===reg.id&&i.analista===usuarioNome).map(i=>i.destino),
+  ]);
+  return meusDestinos.filter(d=>!feitos.has(d.nome));
+}
+
+function renderDash(){
+  if(cdInterval)clearInterval(cdInterval);
+  const now=Date.now();
+  const meusDestinos=destinos.filter(d=>d.usuario===currentUsuario);
+  const ativos=registros.filter(r=>new Date(r.prazo)>now);
+
+  const vencidos=registros.filter(r=>new Date(r.prazo)<now).length;
+  const vencendo=ativos.filter(r=>{const d=new Date(r.prazo)-now;return d>0&&d<172800000;}).length;
+  document.getElementById('d-total').textContent=ativos.length;
+  document.getElementById('d-vencendo').textContent=vencendo;
+  document.getElementById('d-vencidos').textContent=vencidos;
+  document.getElementById('d-anotacoes').textContent=anotacoes.filter(a=>a.usuario===currentUsuario).length;
+
+  const el=document.getElementById('dash-items');
+  if(!currentUsuario){
+    el.innerHTML='<div class="empty">Selecione um usuário para continuar.</div>';
+    return;
+  }
+
+  // Mostra todos os itens ativos.
+  // Some apenas quando o usuário TEM destinos E todos já foram preenchidos naquele item.
+  const sorted=[...ativos].filter(r=>{
+    if(!meusDestinos.length) return true; // sem destinos: sempre mostra tudo
+    const pendentes=pendentesParaUsuario(r,currentUsuario);
+    return pendentes.length>0; // tem destinos: mostra só se ainda tem algum pendente
+  }).sort((a,b)=>new Date(a.prazo)-new Date(b.prazo));
+
+  if(!sorted.length){el.innerHTML='<div class="empty">✓ Você preencheu todos os seus destinos. Nenhum item pendente.</div>';return;}
+
+  el.innerHTML=sorted.map(r=>{
+    const prazoDate=new Date(r.prazo);
+    const diff=prazoDate-now;
+    const urgente=diff<172800000;
+    const cardClass=urgente?'urgente':'ok';
+    const prazoStr=prazoDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+prazoDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const totalGeral=anotacoes.filter(a=>a.registro_id===r.id).reduce((s,a)=>s+a.quantidade,0);
+    let meuStatus;
+    if(!meusDestinos.length){
+      meuStatus=`<span style="font-size:11px;color:var(--text3)">Você não tem destinos cadastrados</span>`;
+    } else {
+      const pend=pendentesParaUsuario(r,currentUsuario);
+      meuStatus=pend.length
+        ?`<span style="font-size:12px;color:var(--orange);font-weight:600">${pend.length} de ${meusDestinos.length} destino(s) pendente(s) p/ você</span>`
+        :`<span style="font-size:12px;color:var(--green);font-weight:600">Você já preencheu seus destinos</span>`;
+    }
+    const countEl=`<div class="countdown ${urgente?'orange':'green'}" id="cd-${r.id}">--</div>`;
+    return `<div class="item-card ${cardClass}" onclick="abrirModalAnotar(${r.id})" style="cursor:pointer" title="Clique para selecionar o destino">
+      <div>
+        <div class="ic-code">${r.codigo}</div>
+        <div class="ic-name">${r.nome_produto}</div>
+        <div class="ic-meta">
+          <span class="pill ${urgente?'pill-orange':'pill-ok'}">${urgente?'Urgente':'No prazo'}</span>
+          <span style="font-size:11px;color:var(--text3)">Prazo: ${prazoStr}</span>
+          ${totalGeral>0?`<span style="font-size:12px;color:var(--text2)">${totalGeral} un no total</span>`:''}
+          ${meuStatus}
+        </div>
+      </div>
+      <div>${countEl}</div>
+    </div>`;
+  }).join('');
+
+  function tick(){
+    sorted.forEach(r=>{
+      const el2=document.getElementById('cd-'+r.id);
+      if(!el2)return;
+      const diff2=new Date(r.prazo)-Date.now();
+      if(diff2<=0){loadAll();return;}
+      const dd=Math.floor(diff2/86400000);
+      const hh=Math.floor((diff2%86400000)/3600000);
+      const mm=Math.floor((diff2%3600000)/60000);
+      const ss=Math.floor((diff2%60000)/1000);
+      el2.textContent=`${String(dd).padStart(2,'0')}d ${String(hh).padStart(2,'0')}h ${String(mm).padStart(2,'0')}m ${String(ss).padStart(2,'0')}s`;
+    });
+  }
+  tick();
+  cdInterval=setInterval(tick,1000);
+}
+
+/* MODAL ANOTAR (dash) — escolher destino, depois quantidade */
+function abrirModalAnotar(regId){
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg)return;
+  if(new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido. Registre nova solicitação.','err');return;}
+  if(!currentUsuario){showToast('Selecione um usuário primeiro.','err');return;}
+  const meusDestinos=destinos.filter(d=>d.usuario===currentUsuario);
+  if(!meusDestinos.length){showToast('Você não tem destinos cadastrados.','err');return;}
+  const pendentes=pendentesParaUsuario(reg,currentUsuario);
+  if(!pendentes.length){showToast('Você já preencheu todos os seus destinos para este item.','ok');return;}
+
+  const totalGeral=anotacoes.filter(a=>a.registro_id===regId).reduce((s,a)=>s+a.quantidade,0);
+  document.getElementById('modal-title').textContent=`${reg.codigo} — ${reg.nome_produto}`;
+  document.getElementById('modal-total').textContent=totalGeral+' un';
+  document.getElementById('modal-reg-id').value=regId;
+
+  document.getElementById('modal-view-usuarios').style.display='none';
+  document.getElementById('modal-form-anotar').style.display='block';
+
+  const sel=document.getElementById('modal-a-destino');
+  sel.innerHTML='<option value="">Selecione o destino</option>'+pendentes.map(d=>`<option>${d.nome}</option>`).join('');
+  document.getElementById('modal-a-qtd-wrap').style.display='none';
+  document.getElementById('modal-a-mov-wrap').style.display='none';
+  document.getElementById('modal-a-qtd').value='';
+  document.getElementById('modal-a-mov').value='';
+  document.getElementById('modal-pend-info').textContent=`${pendentes.length} de ${meusDestinos.length} destino(s) pendente(s) para você neste item`;
+
+  document.getElementById('modal').style.display='flex';
+}
+
+async function salvarQuantidadeDestino(){
+  const regId=parseInt(document.getElementById('modal-reg-id').value);
+  const destino=document.getElementById('modal-a-destino').value;
+  const qtd=parseInt(document.getElementById('modal-a-qtd').value)||0;
+  const movimento=document.getElementById('modal-a-mov').value.trim();
+  if(!destino){showToast('Selecione o destino.','err');return;}
+  if(!qtd){showToast('Informe a quantidade.','err');return;}
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg||new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido.','err');return;}
+  const existente=anotacoes.find(a=>a.registro_id===regId&&a.destino===destino);
+  let error;
+  if(existente){
+    ({error}=await sb.from('anotacoes').update({quantidade:qtd,usuario:currentUsuario,analista:currentUsuario,movimento}).eq('id',existente.id));
+  } else {
+    ({error}=await sb.from('anotacoes').insert({
+      registro_id:regId,codigo:reg.codigo,nome_produto:reg.nome_produto,destino,usuario:currentUsuario,analista:currentUsuario,quantidade:qtd,movimento
+    }));
+  }
+  if(error){console.error(error);showToast('Erro ao salvar: '+(error.message||error.hint||error.code||'desconhecido'),'err');return;}
+  showToast('Quantidade salva.','ok');
+  document.getElementById('modal').style.display='none';
+  loadAll();
+}
+
+async function marcarDestinoIndisponivel(){
+  const regId=parseInt(document.getElementById('modal-reg-id').value);
+  const destino=document.getElementById('modal-a-destino').value;
+  if(!destino){showToast('Selecione o destino primeiro.','err');return;}
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg||new Date(reg.prazo)<=Date.now()){showToast('Prazo vencido.','err');return;}
+  const jaMarcou=indisponiveis.find(i=>i.registro_id===regId&&i.destino===destino);
+  if(jaMarcou){showToast('Este destino já foi marcado como indisponível.','err');return;}
+  const {error}=await sb.from('indisponiveis').insert({registro_id:regId,destino,analista:currentUsuario});
+  if(error){console.error(error);showToast('Erro ao salvar: '+(error.message||error.hint||error.code||'desconhecido'),'err');return;}
+  showToast('Destino marcado como indisponível.','ok');
+  document.getElementById('modal').style.display='none';
+  loadAll();
+}
+
+/* MODAL REGISTROS (visualização) — usuários clicáveis -> destinos */
+function abrirModal(regId){
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg)return;
+  const ants=anotacoes.filter(a=>a.registro_id===regId);
+  const total=ants.reduce((s,a)=>s+a.quantidade,0);
+
+  document.getElementById('modal-title').textContent=`${reg.codigo} — ${reg.nome_produto}`;
+  document.getElementById('modal-total').textContent=total+' un';
+  document.getElementById('modal-reg-id').value=regId;
+
+  // Botão editar prazo só para Amanda
+  const editPrazoBtn=document.getElementById('modal-edit-prazo-btn');
+  if(editPrazoBtn) editPrazoBtn.style.display=currentUsuario==='Amanda Menezes'?'inline-flex':'none';
+
+  document.getElementById('modal-form-anotar').style.display='none';
+  const view=document.getElementById('modal-view-usuarios');
+  view.style.display='block';
+
+  const porUsuario={};
+  usuarios.forEach(u=>porUsuario[u.nome]=0);
+  ants.forEach(a=>{
+    if(!a.usuario)return;
+    porUsuario[a.usuario]=(porUsuario[a.usuario]||0)+a.quantidade;
+  });
+
+  const nomes=Object.keys(porUsuario);
+  if(!nomes.length){
+    view.innerHTML='<div class="empty" style="padding:1rem;font-size:12px">Nenhum usuário cadastrado.</div>';
+  } else {
+    view.innerHTML=nomes.map(nome=>{
+      const qtd=porUsuario[nome];
+      const meusDestinos=destinos.filter(d=>d.usuario===nome);
+      const detalhes=meusDestinos.length?meusDestinos.map(d=>{
+        const ant=ants.find(a=>a.destino===d.nome);
+        const ind=indisponiveis.find(i=>i.registro_id===regId&&i.destino===d.nome);
+        const val=ant?`${ant.quantidade} un${ant.movimento?` · <span style="color:var(--text3)">Mov: ${ant.movimento}</span>`:''}`:ind?'Indisponível':'Pendente';
+        const cor=ant?'var(--green)':ind?'var(--warn)':'var(--red)';
+        const editBtn=ant
+          ?`<button onclick="abrirEditarAnotacao(${ant.id})" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 8px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:8px;flex-shrink:0" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">Editar</button>`
+          :ind
+          ?`<button onclick="removerIndisponivel(${ind.id})" style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px 8px;font-size:10px;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:8px;flex-shrink:0" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">Reverter</button>`
+          :'';
+        return `<div class="analista-row" style="padding-left:26px">
+          <div style="font-size:12px;color:var(--text2);flex:1">${d.nome}</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <div style="font-size:12px;font-weight:600;color:${cor}">${val}</div>
+            ${editBtn}
+          </div>
+        </div>`;
+      }).join(''):`<div style="padding:10px 26px;font-size:12px;color:var(--text3)">Nenhum destino cadastrado para este usuário.</div>`;
+      return `<div class="usuario-block">
+        <div class="analista-row" style="cursor:pointer" onclick="toggleUsuarioDetalhe(this)">
+          <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500">
+            <svg class="chev" style="transition:transform .15s;flex-shrink:0" viewBox="0 0 10 10" width="9" height="9"><path d="M3 1l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+            ${nome}
+          </div>
+          <div style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700;color:var(--green)">${qtd} un</div>
+        </div>
+        <div class="usuario-detail">${detalhes}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('modal').style.display='flex';
+}
+
+function toggleUsuarioDetalhe(rowEl){
+  const detail=rowEl.nextElementSibling;
+  const chev=rowEl.querySelector('.chev');
+  const open=detail.style.display==='block';
+  detail.style.display=open?'none':'block';
+  chev.style.transform=open?'rotate(0deg)':'rotate(90deg)';
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('modal'))
+    document.getElementById('modal').style.display='none';
+}
+
+/* PENDÊNCIAS */
+function renderPendencias(){
+  // Só itens VENCIDOS geram pendência
+  const now=Date.now();
+  const ativos=registros.filter(r=>new Date(r.prazo)<=now);
+
+  // Para cada item vencido, verifica quais destinos não têm anotação NEM indisponível
+  const pendMap={}; // registro_id -> {reg, pendentes:[destino,...]}
+  const usuarioPend={}; // usuario -> count
+
+  ativos.forEach(r=>{
+    const comAcao=new Set([
+      ...anotacoes.filter(a=>a.registro_id===r.id).map(a=>a.destino),
+      ...indisponiveis.filter(i=>i.registro_id===r.id).map(i=>i.destino),
+    ]);
+    const pendentes=destinos.filter(d=>!comAcao.has(d.nome));
+    if(pendentes.length){
+      pendMap[r.id]={reg:r,pendentes};
+      pendentes.forEach(d=>{usuarioPend[d.usuario]=(usuarioPend[d.usuario]||0)+1;});
+    }
+  });
+
+  const totalPend=Object.values(usuarioPend).reduce((s,v)=>s+v,0);
+  const itensPend=Object.keys(pendMap).length;
+  document.getElementById('p-total').textContent=totalPend;
+  document.getElementById('p-itens').textContent=itensPend;
+
+  // Top usuário
+  const topEntry=Object.entries(usuarioPend).sort((a,b)=>b[1]-a[1])[0];
+  const ncEl=document.getElementById('nc-pend');
+  if(topEntry){
+    document.getElementById('p-top-nome').textContent=topEntry[0].split(' ')[0];
+    document.getElementById('p-top-qtd').textContent=topEntry[1];
+    ncEl.textContent=totalPend;ncEl.style.display='inline';
+  } else {
+    document.getElementById('p-top-nome').textContent='—';
+    document.getElementById('p-top-qtd').textContent='0';
+    ncEl.style.display='none';
+  }
+
+  // Tabela por item
+  const body=document.getElementById('pend-tbody');
+  document.getElementById('pend-count').textContent=itensPend+' item'+(itensPend!==1?'s':'');
+  if(!itensPend){
+    body.innerHTML=`<tr><td colspan="4"><div class="empty">Nenhuma pendência. Todos os destinos registraram suas ações.</div></td></tr>`;
+  } else {
+    body.innerHTML=Object.values(pendMap).map(({reg:r,pendentes})=>{
+      const prazoStr=new Date(r.prazo).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+new Date(r.prazo).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return `<tr>
+        <td style="font-family:monospace;font-size:13px;font-weight:700">${r.codigo}</td>
+        <td style="font-size:13px;font-weight:500">${r.nome_produto}</td>
+        <td style="font-size:12px;color:var(--text3)">${prazoStr}</td>
+        <td>${pendentes.map(d=>`<span class="pill pill-danger" style="margin-right:4px;margin-bottom:2px" title="Responsável: ${d.usuario}">${d.nome}</span>`).join('')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Ranking por usuário
+  const rank=document.getElementById('pend-ranking');
+  if(!usuarios.length){
+    rank.innerHTML='<div class="empty">Nenhum usuário cadastrado.</div>';return;
+  }
+  const totalDestinosPorUsuario={};
+  destinos.forEach(d=>{totalDestinosPorUsuario[d.usuario]=(totalDestinosPorUsuario[d.usuario]||0)+1;});
+  rank.innerHTML=usuarios.map(u=>{
+    const a=u.nome;
+    const qt=usuarioPend[a]||0;
+    const base=Math.max(totalDestinosPorUsuario[a]||0,1);
+    const pct=Math.round((qt/base)*100);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:500">${a}</span>
+        <span style="font-size:13px;font-weight:700;color:${qt>0?'var(--red)':'var(--green)'}">${qt} pendência${qt!==1?'s':''}</span>
+      </div>
+      <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${qt>0?'var(--red)':'var(--green)'};border-radius:3px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* PRAZOS (só Amanda) */
+function renderPrazos(){
+  const el=document.getElementById('prazos-list');
+  if(!el)return;
+  const now=Date.now();
+  const ativos=registros.filter(r=>new Date(r.prazo)>now).sort((a,b)=>new Date(a.prazo)-new Date(b.prazo));
+  document.getElementById('prazos-count').textContent=ativos.length+' item'+(ativos.length!==1?'s':'');
+  if(!ativos.length){el.innerHTML='<div class="empty">Nenhum item ativo.</div>';return;}
+  el.innerHTML=`
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Novo prazo para selecionados</div>
+        <input type="datetime-local" id="prazos-novo-prazo" style="width:100%">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="toggleSelecionarTodos()" style="font-size:12px;padding:7px 14px" id="btn-sel-todos">Selecionar todos</button>
+        <button class="btn btn-primary" onclick="salvarPrazosEmLote()" style="font-size:12px;padding:7px 14px">
+          <svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Salvar selecionados
+        </button>
+      </div>
+    </div>
+    ${ativos.map(r=>{
+      const prazoDate=new Date(r.prazo);
+      const diff=prazoDate-now;
+      const urgente=diff<172800000;
+      const prazoStr=prazoDate.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+prazoDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const total=anotacoes.filter(a=>a.registro_id===r.id).reduce((s,a)=>s+a.quantidade,0);
+      return `<div class="li" style="margin-bottom:8px;cursor:pointer" onclick="togglePrazoItem(this,${r.id})">
+        <input type="checkbox" class="prazo-check" data-id="${r.id}" onclick="event.stopPropagation();togglePrazoCheck(this)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">
+        <div class="li-dot" style="background:${urgente?'var(--orange)':'var(--green)'}"></div>
+        <div class="li-info">
+          <div class="li-name"><span style="font-family:monospace;font-weight:700">${r.codigo}</span> — ${r.nome_produto}</div>
+          <div class="li-sub">Prazo atual: ${prazoStr} · ${total} un anotadas</div>
+        </div>
+        <button class="btn btn-ghost" onclick="event.stopPropagation();abrirEditarPrazo(${r.id})" style="font-size:12px;padding:6px 12px;flex-shrink:0">
+          <svg viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M9.5 2.5l2 2L4 12H2v-2L9.5 2.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Editar
+        </button>
+      </div>`;
+    }).join('')}`;
+}
+
+function togglePrazoItem(divEl, regId){
+  const cb=divEl.querySelector('.prazo-check');
+  cb.checked=!cb.checked;
+  divEl.style.borderColor=cb.checked?'var(--accent)':'var(--border)';
+}
+
+function togglePrazoCheck(cb){
+  const div=cb.closest('.li');
+  div.style.borderColor=cb.checked?'var(--accent)':'var(--border)';
+}
+
+function toggleSelecionarTodos(){
+  const checks=document.querySelectorAll('.prazo-check');
+  const todos=[...checks].every(c=>c.checked);
+  checks.forEach(c=>{
+    c.checked=!todos;
+    c.closest('.li').style.borderColor=!todos?'var(--accent)':'var(--border)';
+  });
+  document.getElementById('btn-sel-todos').textContent=todos?'Selecionar todos':'Desmarcar todos';
+}
+
+async function salvarPrazosEmLote(){
+  const prazo=document.getElementById('prazos-novo-prazo').value;
+  if(!prazo){showToast('Informe o novo prazo.','err');return;}
+  const selecionados=[...document.querySelectorAll('.prazo-check:checked')].map(c=>parseInt(c.dataset.id));
+  if(!selecionados.length){showToast('Selecione pelo menos um item.','err');return;}
+  let ok=0;
+  for(const id of selecionados){
+    const {error}=await sb.from('registros').update({prazo:new Date(prazo).toISOString()}).eq('id',id);
+    if(!error)ok++;
+  }
+  showToast(`${ok} prazo(s) atualizado(s).`,'ok');
+  loadAll();
+}
+
+async function removerIndisponivel(id){
+  const {error}=await sb.from('indisponiveis').delete().eq('id',id);
+  if(error){showToast('Erro ao reverter.','err');return;}
+  document.getElementById('modal').style.display='none';
+  showToast('Indisponível revertido.','ok');
+  loadAll();
+}
+
+function abrirEditarAnotacao(anotacaoId){
+  const ant=anotacoes.find(a=>a.id===anotacaoId);
+  if(!ant)return;
+  document.getElementById('ea-id').value=anotacaoId;
+  document.getElementById('ea-destino').textContent=ant.destino;
+  document.getElementById('ea-qtd').value=ant.quantidade||0;
+  document.getElementById('ea-mov').value=ant.movimento||'';
+  document.getElementById('modal').style.display='none';
+  document.getElementById('modal-editar-anotacao').style.display='flex';
+}
+
+async function salvarEdicaoAnotacao(){
+  const id=parseInt(document.getElementById('ea-id').value);
+  const qtd=parseInt(document.getElementById('ea-qtd').value)||0;
+  const mov=document.getElementById('ea-mov').value.trim();
+  const {error}=await sb.from('anotacoes').update({quantidade:qtd,movimento:mov}).eq('id',id);
+  if(error){showToast('Erro ao salvar.','err');return;}
+  document.getElementById('modal-editar-anotacao').style.display='none';
+  showToast('Anotação atualizada.','ok');
+  loadAll();
+}
+
+function abrirEditarPrazoDoModal(){
+  const regId=parseInt(document.getElementById('modal-reg-id').value);
+  document.getElementById('modal').style.display='none';
+  abrirEditarPrazo(regId);
+}
+
+function abrirEditarPrazo(regId){
+  const reg=registros.find(r=>r.id===regId);
+  if(!reg)return;
+  const prazoLocal=new Date(reg.prazo);
+  const offset=prazoLocal.getTimezoneOffset()*60000;
+  const localISO=new Date(prazoLocal-offset).toISOString().slice(0,16);
+  document.getElementById('ep-reg-id').value=regId;
+  document.getElementById('ep-titulo').textContent=`${reg.codigo} — ${reg.nome_produto}`;
+  document.getElementById('ep-prazo').value=localISO;
+  document.getElementById('modal-editar-prazo').style.display='flex';
+}
+
+async function salvarNovoPrazo(){
+  const regId=parseInt(document.getElementById('ep-reg-id').value);
+  const prazo=document.getElementById('ep-prazo').value;
+  if(!prazo){showToast('Informe o novo prazo.','err');return;}
+  const {error}=await sb.from('registros').update({prazo:new Date(prazo).toISOString()}).eq('id',regId);
+  if(error){showToast('Erro ao salvar.','err');return;}
+  document.getElementById('modal-editar-prazo').style.display='none';
+  showToast('Prazo atualizado para todos.','ok');
+  loadAll();
+}
+
+/* PRÉ ORDER / GARANTIA */
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let preorderData=[];
+let buscaPOTimeout=null;
+let poCodigoCount=0;
+
+function abrirPreOrder(){
+  document.getElementById('preorder-screen').style.display='block';
+  if(!usuarios.length||!destinos.length){
+    loadAll().then(()=>{preencherSelectsPreOrder();carregarPreOrder();iniciarCodigos();});
+  } else {
+    preencherSelectsPreOrder();carregarPreOrder();iniciarCodigos();
+  }
+}
+
+function fecharPreOrder(){
+  document.getElementById('preorder-screen').style.display='none';
+}
+
+function iniciarCodigos(){
+  document.getElementById('po-codigos-wrap').innerHTML='';
+  poCodigoCount=0;
+  adicionarCampoCodigoPreOrder();
+}
+
+function adicionarCampoCodigoPreOrder(){
+  const wrap=document.getElementById('po-codigos-wrap');
+  const idx=poCodigoCount++;
+  const div=document.createElement('div');
+  div.style.cssText='display:grid;grid-template-columns:120px 1fr 28px;gap:8px;align-items:flex-end';
+  div.id='po-cod-row-'+idx;
+  div.innerHTML=`
+    <div class="field">${idx===0?'<label>Código</label>':'<label style="opacity:0">-</label>'}
+      <input type="text" id="po-cod-${idx}" placeholder="Ex: 25210" oninput="buscarProdutoPO(this.value,${idx})" style="text-align:center">
+    </div>
+    <div class="field">${idx===0?'<label>Produto (preenchido automaticamente)</label>':'<label style="opacity:0">-</label>'}
+      <input type="text" id="po-prod-${idx}" readonly style="cursor:default;color:var(--text2);text-align:center">
+    </div>
+    <button onclick="removerCodigo(${idx})" style="height:36px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text3);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;${idx===0?'opacity:.3;pointer-events:none':''}" title="Remover">×</button>`;
+  wrap.appendChild(div);
+}
+
+function removerCodigo(idx){
+  const el=document.getElementById('po-cod-row-'+idx);
+  if(el)el.remove();
+}
+
+function buscarProdutoPO(val,idx){
+  const el=document.getElementById('po-prod-'+idx);
+  if(!val.trim()){el.value='';return;}
+  clearTimeout(buscaPOTimeout);
+  buscaPOTimeout=setTimeout(()=>{
+    const found=cadastros.find(c=>c.codigo.toLowerCase()===val.trim().toLowerCase());
+    el.value=found?found.nome:'Produto não encontrado';
+    el.style.color=found?'var(--text)':'var(--red)';
+  },400);
+}
+
+function preencherSelectsPreOrder(){
+  const nomes=usuarios.map(u=>`<option value="${u.nome}">${u.nome}</option>`).join('');
+  const dests=destinos.map(d=>`<option value="${d.nome}">${d.nome}</option>`).join('');
+  ['po-solicitante','po-recebido'].forEach(id=>{
+    document.getElementById(id).innerHTML='<option value="">Selecione...</option>'+nomes;
+  });
+  document.getElementById('po-origem').innerHTML='<option value="">Selecione...</option>'+dests;
+}
+
+function preencherMesAno(val){
+  if(!val)return;
+  const d=new Date(val+'T12:00:00');
+  document.getElementById('po-mes').value=MESES[d.getMonth()];
+  document.getElementById('po-ano').value=d.getFullYear();
+}
+
+async function salvarLinhaPreOrder(){
+  const data=document.getElementById('po-data').value;
+  const origem=document.getElementById('po-origem').value;
+  const movimento=document.getElementById('po-movimento').value.trim();
+  const finalidade=document.getElementById('po-finalidade').value;
+  const solicitante=document.getElementById('po-solicitante').value;
+  const rastreio=document.getElementById('po-rastreio').value.trim();
+  const recebido=document.getElementById('po-recebido').value;
+  const dataRec=document.getElementById('po-data-rec').value;
+  if(!data){showToast('Informe a data.','err');return;}
+  // Coletar todos os códigos preenchidos
+  const codigos=[];
+  document.querySelectorAll('[id^="po-cod-"]').forEach(el=>{
+    if(!el.id.includes('row')){
+      const idx=el.id.replace('po-cod-','');
+      const cod=el.value.trim();
+      const prod=document.getElementById('po-prod-'+idx)?.value.trim()||'';
+      if(cod)codigos.push({codigo:cod,produto:prod});
+    }
+  });
+  if(!codigos.length){showToast('Adicione pelo menos um código.','err');return;}
+  const d=new Date(data+'T12:00:00');
+  let ok=0;
+  for(const {codigo,produto} of codigos){
+    const {error}=await sb.from('preorder').insert({
+      ano:d.getFullYear(),mes:MESES[d.getMonth()],data,
+      origem,movimento,codigo,produto,finalidade,solicitante,
+      rastreio,quem_recebeu:recebido,data_recebimento:dataRec||null
+    });
+    if(!error)ok++;
+  }
+  // Limpar form
+  ['po-data','po-mes','po-ano','po-movimento','po-rastreio','po-data-rec'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  ['po-origem','po-finalidade','po-solicitante','po-recebido'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  iniciarCodigos();
+  showToast(`${ok} registro(s) adicionado(s).`,'ok');
+  carregarPreOrder();
+}
+
+async function carregarPreOrder(){
+  const {data}=await sb.from('preorder').select('*').order('data',{ascending:false}).limit(5000);
+  preorderData=data||[];
+  renderPreOrder();
+}
+
+function renderPreOrder(){
+  const tbody=document.getElementById('po-tbody');
+  document.getElementById('po-count').textContent=preorderData.length+' registro'+(preorderData.length!==1?'s':'');
+  if(!preorderData.length){tbody.innerHTML='<tr><td colspan="13" style="padding:3rem;text-align:center;color:var(--text3);font-size:13px">Nenhum registro ainda.</td></tr>';return;}
+  const td='padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text);font-size:13px';
+  tbody.innerHTML=preorderData.map(r=>`<tr onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+    <td style="${td}">${r.ano||''}</td>
+    <td style="${td}">${r.mes||''}</td>
+    <td style="${td}">${r.data?new Date(r.data+'T12:00:00').toLocaleDateString('pt-BR'):''}</td>
+    <td style="${td}">${r.origem||''}</td>
+    <td style="${td}">${r.movimento||''}</td>
+    <td style="${td};font-family:monospace;font-weight:700">${r.codigo||''}</td>
+    <td style="${td}">${r.produto||''}</td>
+    <td style="${td}"><span class="pill pill-ok" style="text-transform:none;font-size:11px">${r.finalidade||''}</span></td>
+    <td style="${td}">${r.solicitante||''}</td>
+    <td style="${td}">${r.rastreio||''}</td>
+    <td style="${td}">${r.quem_recebeu||''}</td>
+    <td style="${td}">${r.data_recebimento?new Date(r.data_recebimento+'T12:00:00').toLocaleDateString('pt-BR'):''}</td>
+    <td style="${td}"><button class="btn-del" onclick="deletarPreOrder(${r.id})"><svg viewBox="0 0 16 16" fill="none" width="13" height="13"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5M3 4l1 10h8L13 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></td>
+  </tr>`).join('');
+}
+
+async function deletarPreOrder(id){
+  await sb.from('preorder').delete().eq('id',id);
+  showToast('Registro removido.','ok');
+  carregarPreOrder();
+}
+
+function exportarPreOrder(){
+  if(typeof XLSX==='undefined'){showToast('Biblioteca XLSX não carregada.','err');return;}
+  const ws=XLSX.utils.json_to_sheet(preorderData.map(r=>({
+    Ano:r.ano,Mês:r.mes,Data:r.data,Origem:r.origem,Movimento:r.movimento,
+    Código:r.codigo,Produto:r.produto,Finalidade:r.finalidade,
+    Solicitante:r.solicitante,Rastreio:r.rastreio,
+    'Quem recebeu':r.quem_recebeu,'Data recebimento':r.data_recebimento
+  })));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'PreOrder');
+  XLSX.writeFile(wb,'preorder_garantia.xlsx');
+}
+
+function showToast(msg,type){
+  const c=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  const ico=type==='ok'?'<svg viewBox="0 0 14 14" fill="none" width="12" height="12"><path d="M2 7l3.5 3.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':'<svg viewBox="0 0 14 14" fill="none" width="12" height="12"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M7 4v3.5M7 9.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  t.innerHTML=ico+' '+msg;c.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+
+loadAll();
+
+/* REALTIME */
+sb.channel('remanejar-rt')
+  .on('postgres_changes',{event:'*',schema:'public',table:'registros'},()=>loadAll())
+  .on('postgres_changes',{event:'*',schema:'public',table:'anotacoes'},()=>loadAll())
+  .on('postgres_changes',{event:'*',schema:'public',table:'indisponiveis'},()=>loadAll())
+  .on('postgres_changes',{event:'*',schema:'public',table:'cadastro'},()=>loadAll())
+  .on('postgres_changes',{event:'*',schema:'public',table:'destinos'},()=>loadAll())
+  .on('postgres_changes',{event:'*',schema:'public',table:'usuarios'},()=>loadAll())
+  .subscribe();
+</script>
+</body>
+</html>
